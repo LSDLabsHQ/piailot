@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>piailot:ai // skills</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a0a0a; --surface: #111111; --border: #1a1a1a;
+    --green: #00ff41; --green-dim: #00aa2a; --green-glow: rgba(0,255,65,0.15);
+    --amber: #ffb000; --red: #ff3333; --cyan: #00d4ff;
+    --text: #c0c0c0; --text-dim: #606060;
+  }
+  body {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    background: var(--bg); color: var(--text);
+    min-height: 100dvh; display: flex; flex-direction: column;
+  }
+
+  /* header */
+  header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  header .logo {
+    color: var(--green); font-weight: 700; font-size: 1.1em;
+    text-shadow: 0 0 10px var(--green-glow);
+  }
+  header .logo span { color: var(--text-dim); font-weight: 400; }
+  header .label {
+    color: var(--amber); font-size: 0.8em;
+    border: 1px solid rgba(255,176,0,0.3); padding: 2px 8px;
+    border-radius: 3px; background: rgba(255,176,0,0.08);
+  }
+  .back-btn {
+    margin-left: auto; color: var(--text-dim); text-decoration: none;
+    font-size: 0.8em; padding: 6px 12px; border: 1px solid var(--border);
+    border-radius: 4px; transition: all 0.2s;
+  }
+  .back-btn:hover { color: var(--green); border-color: var(--green-dim); }
+
+  /* main */
+  main {
+    flex: 1; padding: 20px 16px; max-width: 720px;
+    width: 100%; margin: 0 auto;
+  }
+
+  /* toolbar */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .toolbar h2 { color: var(--green); font-size: 0.95em; font-weight: 700; }
+  .btn {
+    background: var(--green-dim); color: var(--bg); border: none;
+    padding: 8px 16px; border-radius: 4px; font-family: inherit;
+    font-weight: 700; cursor: pointer; font-size: 0.8em;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: var(--green); }
+  .btn-outline {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--border); font-weight: 400;
+  }
+  .btn-outline:hover { color: var(--text); border-color: var(--text-dim); background: transparent; }
+  .btn-danger {
+    background: transparent; color: var(--red);
+    border: 1px solid rgba(255,51,51,0.3); font-weight: 400;
+  }
+  .btn-danger:hover { background: rgba(255,51,51,0.1); border-color: var(--red); }
+
+  /* views */
+  .view { display: none; }
+  .view.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* empty state */
+  .empty {
+    text-align: center; padding: 60px 20px; color: var(--text-dim);
+    font-size: 0.85em; line-height: 1.8;
+  }
+  .empty .icon { font-size: 1.6em; margin-bottom: 12px; color: var(--green-dim); }
+
+  /* skill cards */
+  .skill-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 16px; margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .skill-card:hover { border-color: var(--green-dim); }
+  .skill-card .name {
+    color: var(--green); font-weight: 700; font-size: 0.9em;
+    margin-bottom: 6px;
+  }
+  .skill-card .name::before { content: '$ '; color: var(--text-dim); font-weight: 400; }
+  .skill-card .desc {
+    color: var(--text-dim); font-size: 0.8em; margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .skill-card .tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tool-badge {
+    font-size: 0.7em; padding: 3px 8px; border-radius: 3px;
+    background: rgba(0,212,255,0.08); color: var(--cyan);
+    border: 1px solid rgba(0,212,255,0.2);
+  }
+  .skill-card .actions { display: flex; gap: 8px; }
+
+  /* form */
+  .form-group { margin-bottom: 18px; }
+  .form-group label {
+    display: block; color: var(--text-dim); font-size: 0.78em;
+    margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .form-group label .req { color: var(--red); }
+  .form-input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 12px; border-radius: 4px;
+    font-family: inherit; font-size: 0.85em; transition: border-color 0.2s;
+  }
+  .form-input:focus { outline: none; border-color: var(--green-dim); }
+  .form-input:disabled { opacity: 0.4; cursor: not-allowed; }
+  .form-input.invalid { border-color: var(--red); }
+  textarea.form-input { min-height: 200px; resize: vertical; line-height: 1.6; }
+
+  /* tool toggles */
+  .tool-toggles { display: flex; flex-direction: column; gap: 8px; }
+  .tool-toggle {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    padding: 10px 12px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 4px;
+    transition: all 0.2s; font-size: 0.82em; user-select: none;
+  }
+  .tool-toggle:hover { border-color: var(--green-dim); }
+  .tool-toggle input { display: none; }
+  .tool-toggle .toggle-box {
+    color: var(--text-dim); font-weight: 700; min-width: 24px;
+    transition: color 0.2s;
+  }
+  .tool-toggle input:checked ~ .toggle-box { color: var(--green); }
+  .tool-toggle .toggle-name { color: var(--cyan); }
+  .tool-toggle .toggle-sep { color: var(--text-dim); }
+  .tool-toggle .toggle-desc { color: var(--text-dim); font-size: 0.92em; }
+  .tool-toggle.checked { border-color: var(--green-dim); background: var(--green-glow); }
+
+  /* form buttons */
+  .form-actions {
+    display: flex; gap: 10px; margin-top: 24px;
+    padding-top: 16px; border-top: 1px solid var(--border);
+  }
+
+  /* confirm modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px; max-width: 400px; width: 90%;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal h3 { color: var(--red); font-size: 0.9em; margin-bottom: 12px; }
+  .modal p { color: var(--text-dim); font-size: 0.82em; line-height: 1.6; margin-bottom: 20px; }
+  .modal .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* loading */
+  .loading { text-align: center; padding: 40px; color: var(--text-dim); font-size: 0.85em; }
+
+  /* toast */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    padding: 10px 20px; border-radius: 4px; font-size: 0.8em;
+    z-index: 200; animation: toastIn 0.3s ease;
+    font-family: inherit;
+  }
+  .toast.success { background: var(--green-dim); color: var(--bg); }
+  .toast.error { background: var(--red); color: #fff; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+
+  /* responsive */
+  @media (max-width: 480px) {
+    main { padding: 14px 10px; }
+    .skill-card { padding: 12px; }
+    .form-actions { flex-direction: column; }
+    .form-actions .btn { width: 100%; text-align: center; }
+    .tool-toggle { padding: 8px 10px; font-size: 0.78em; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">piailot<span>:ai</span></div>
+  <span class="label">Skills</span>
+  <a href="/" class="back-btn">&larr; back</a>
+</header>
+
+<main>
+  <!-- List View -->
+  <div id="list-view" class="view active">
+    <div class="toolbar">
+      <h2>$ skills --list</h2>
+      <button class="btn" onclick="showCreateForm()">+ new</button>
+    </div>
+    <div id="skills-list">
+      <div class="loading">loading skills...</div>
+    </div>
+  </div>
+
+  <!-- Form View -->
+  <div id="form-view" class="view">
+    <div class="toolbar">
+      <h2 id="form-title">$ skills --create</h2>
+    </div>
+    <form id="skill-form" onsubmit="return handleSave(event)">
+      <div class="form-group">
+        <label>name <span class="req">*</span></label>
+        <input type="text" id="f-name" class="form-input" placeholder="my-skill"
+               pattern="[a-zA-Z0-9_\-]+" title="Letters, numbers, hyphens, underscores only">
+      </div>
+      <div class="form-group">
+        <label>description <span class="req">*</span></label>
+        <input type="text" id="f-desc" class="form-input" placeholder="What this skill does...">
+      </div>
+      <div class="form-group">
+        <label>tools</label>
+        <div class="tool-toggles" id="tool-toggles"></div>
+      </div>
+      <div class="form-group">
+        <label>instructions (system prompt) <span class="req">*</span></label>
+        <textarea id="f-prompt" class="form-input" placeholder="You are a helpful assistant that..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn" id="save-btn">create</button>
+        <button type="button" class="btn btn-outline" onclick="showList()">cancel</button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <h3>$ confirm delete</h3>
+    <p>Delete skill "<strong id="delete-name"></strong>"? This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">cancel</button>
+      <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var TOOLS = [
+  { id: 'web_search', desc: 'Search the web' },
+  { id: 'web_fetch',  desc: 'Fetch a web page' },
+  { id: 'calculator', desc: 'Evaluate math' },
+  { id: 'datetime',   desc: 'Current date/time' }
+];
+
+var editingSkill = null;
+var deletingSkill = null;
+
+// Auth guard
+async function checkAuth() {
+  try {
+    var res = await fetch('/api/auth/me');
+    if (res.status === 401) { window.location.href = '/login.html'; return false; }
+    return true;
+  } catch (e) {
+    return true;
+  }
+}
+
+// Toast notification
+function toast(msg, type) {
+  var el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(function() { el.remove(); }, 2500);
+}
+
+// Escape HTML
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Render tool toggles in the form
+function renderToolToggles(selected) {
+  var container = document.getElementById('tool-toggles');
+  container.innerHTML = '';
+  TOOLS.forEach(function(tool) {
+    var isChecked = selected && selected.indexOf(tool.id) !== -1;
+    var label = document.createElement('label');
+    label.className = 'tool-toggle' + (isChecked ? ' checked' : '');
+
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.name = 'tools';
+    cb.value = tool.id;
+    cb.checked = isChecked;
+
+    var box = document.createElement('span');
+    box.className = 'toggle-box';
+    box.textContent = isChecked ? '[x]' : '[ ]';
+
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'toggle-name';
+    nameSpan.textContent = tool.id;
+
+    var sep = document.createElement('span');
+    sep.className = 'toggle-sep';
+    sep.innerHTML = ' &mdash; ';
+
+    var descSpan = document.createElement('span');
+    descSpan.className = 'toggle-desc';
+    descSpan.textContent = tool.desc;
+
+    label.appendChild(cb);
+    label.appendChild(box);
+    label.appendChild(nameSpan);
+    label.appendChild(sep);
+    label.appendChild(descSpan);
+
+    cb.addEventListener('change', function() {
+      box.textContent = cb.checked ? '[x]' : '[ ]';
+      label.classList.toggle('checked', cb.checked);
+    });
+
+    container.appendChild(label);
+  });
+}
+
+// Load and render skills list
+async function loadSkills() {
+  var container = document.getElementById('skills-list');
+  container.innerHTML = '<div class="loading">loading skills...</div>';
+  try {
+    var res = await fetch('/api/skills');
+    if (!res.ok) throw new Error('Failed to load skills');
+    var skills = await res.json();
+    if (!skills || skills.length === 0) {
+      container.innerHTML =
+        '<div class="empty">' +
+        '<div class="icon">&gt;_</div>' +
+        'No skills yet &mdash; create your first one.' +
+        '</div>';
+      return;
+    }
+    container.innerHTML = '';
+    skills.forEach(function(skill) {
+      var card = document.createElement('div');
+      card.className = 'skill-card';
+
+      var nameDiv = document.createElement('div');
+      nameDiv.className = 'name';
+      nameDiv.textContent = skill.name;
+      card.appendChild(nameDiv);
+
+      var descDiv = document.createElement('div');
+      descDiv.className = 'desc';
+      descDiv.textContent = skill.description || '';
+      card.appendChild(descDiv);
+
+      if (skill.tools && skill.tools.length > 0) {
+        var toolsDiv = document.createElement('div');
+        toolsDiv.className = 'tools';
+        skill.tools.forEach(function(t) {
+          var badge = document.createElement('span');
+          badge.className = 'tool-badge';
+          badge.textContent = t;
+          toolsDiv.appendChild(badge);
+        });
+        card.appendChild(toolsDiv);
+      }
+
+      var actionsDiv = document.createElement('div');
+      actionsDiv.className = 'actions';
+
+      var editBtn = document.createElement('button');
+      editBtn.className = 'btn btn-outline';
+      editBtn.textContent = 'edit';
+      editBtn.addEventListener('click', function() { editSkill(skill.name); });
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-danger';
+      delBtn.textContent = 'delete';
+      delBtn.addEventListener('click', function() { deleteSkill(skill.name); });
+
+      actionsDiv.appendChild(editBtn);
+      actionsDiv.appendChild(delBtn);
+      card.appendChild(actionsDiv);
+
+      container.appendChild(card);
+    });
+  } catch (e) {
+    container.innerHTML = '<div class="empty">Error loading skills: ' + escHtml(e.message) + '</div>';
+  }
+}
+
+// View switching
+function showView(id) {
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+function showList() {
+  editingSkill = null;
+  showView('list-view');
+}
+
+function showCreateForm() {
+  editingSkill = null;
+  document.getElementById('form-title').textContent = '$ skills --create';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-name').disabled = false;
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-prompt').value = '';
+  document.getElementById('save-btn').textContent = 'create';
+  renderToolToggles([]);
+  clearValidation();
+  showView('form-view');
+  document.getElementById('f-name').focus();
+}
+
+async function editSkill(name) {
+  try {
+    var res = await fetch('/api/skills/' + encodeURIComponent(name));
+    if (!res.ok) throw new Error('Failed to load skill');
+    var skill = await res.json();
+    editingSkill = name;
+    document.getElementById('form-title').textContent = '$ skills --edit ' + name;
+    document.getElementById('f-name').value = skill.name;
+    document.getElementById('f-name').disabled = true;
+    document.getElementById('f-desc').value = skill.description || '';
+    document.getElementById('f-prompt').value = skill.system_prompt || '';
+    document.getElementById('save-btn').textContent = 'save';
+    renderToolToggles(skill.tools || []);
+    clearValidation();
+    showView('form-view');
+    document.getElementById('f-desc').focus();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+// Form validation
+function clearValidation() {
+  document.querySelectorAll('.form-input').forEach(function(el) { el.classList.remove('invalid'); });
+}
+
+function validateForm() {
+  clearValidation();
+  var valid = true;
+  var nameEl = document.getElementById('f-name');
+  var descEl = document.getElementById('f-desc');
+  var promptEl = document.getElementById('f-prompt');
+
+  if (!editingSkill && !nameEl.value.trim()) {
+    nameEl.classList.add('invalid'); valid = false;
+  }
+  if (!descEl.value.trim()) {
+    descEl.classList.add('invalid'); valid = false;
+  }
+  if (!promptEl.value.trim()) {
+    promptEl.classList.add('invalid'); valid = false;
+  }
+  return valid;
+}
+
+// Save handler
+async function handleSave(e) {
+  e.preventDefault();
+  if (!validateForm()) { toast('Please fill all required fields', 'error'); return false; }
+
+  var selectedTools = [];
+  document.querySelectorAll('input[name="tools"]:checked').forEach(function(cb) {
+    selectedTools.push(cb.value);
+  });
+
+  var saveBtn = document.getElementById('save-btn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'saving...';
+
+  try {
+    var res;
+    if (editingSkill) {
+      res = await fetch('/api/skills/' + encodeURIComponent(editingSkill), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: document.getElementById('f-desc').value.trim(),
+          tools: selectedTools,
+          system_prompt: document.getElementById('f-prompt').value.trim()
+        })
+      });
+      if (!res.ok) throw new Error('Update failed');
+      toast('Skill updated', 'success');
+    } else {
+      res = await fetch('/api/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('f-name').value.trim(),
+          description: document.getElementById('f-desc').value.trim(),
+          tools: selectedTools,
+          system_prompt: document.getElementById('f-prompt').value.trim()
+        })
+      });
+      if (!res.ok) {
+        var errBody = await res.text();
+        throw new Error(errBody || 'Create failed');
+      }
+      toast('Skill created', 'success');
+    }
+    showList();
+    loadSkills();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = editingSkill ? 'save' : 'create';
+  }
+  return false;
+}
+
+// Delete
+function deleteSkill(name) {
+  deletingSkill = name;
+  document.getElementById('delete-name').textContent = name;
+  document.getElementById('delete-modal').classList.add('active');
+}
+
+function closeDeleteModal() {
+  deletingSkill = null;
+  document.getElementById('delete-modal').classList.remove('active');
+}
+
+async function confirmDelete() {
+  if (!deletingSkill) return;
+  var btn = document.getElementById('confirm-delete-btn');
+  btn.disabled = true;
+  btn.textContent = 'deleting...';
+  try {
+    var res = await fetch('/api/skills/' + encodeURIComponent(deletingSkill), { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    toast('Skill deleted', 'success');
+    loadSkills();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'delete';
+    closeDeleteModal();
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('delete-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDeleteModal();
+});
+
+// Escape key closes modal/form
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if (document.getElementById('delete-modal').classList.contains('active')) {
+      closeDeleteModal();
+    } else if (document.getElementById('form-view').classList.contains('active')) {
+      showList();
+    }
+  }
+});
+
+// Init
+(async function() {
+  var ok = await checkAuth();
+  if (ok) loadSkills();
+})();
+</script>
+</body>
+</html>

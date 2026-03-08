@@ -1,0 +1,15 @@
+[Unit]
+Description=PiAiLot - AI Chat Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__INSTALL_DIR__
+ExecStart=__INSTALL_DIR__/venv/bin/uvicorn main:app --host 127.0.0.1 --port __PORT__
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

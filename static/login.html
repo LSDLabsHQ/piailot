@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>piailot:ai // login</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap");
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a0a0a; --surface: #111111; --border: #1a1a1a;
+    --green: #00ff41; --green-dim: #00aa2a; --green-glow: rgba(0,255,65,0.15);
+    --amber: #ffb000; --red: #ff3333; --cyan: #00d4ff;
+    --text: #c0c0c0; --text-dim: #606060;
+  }
+  body {
+    font-family: "JetBrains Mono", "Courier New", monospace;
+    background: var(--bg); color: var(--text);
+    min-height: 100dvh; display: flex; flex-direction: column;
+  }
+  header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  header .logo {
+    color: var(--green); font-weight: 700; font-size: 1.1em;
+    text-shadow: 0 0 10px var(--green-glow);
+  }
+  header .logo span { color: var(--text-dim); font-weight: 400; }
+
+  main {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .container {
+    width: 100%; max-width: 420px;
+  }
+
+  .welcome {
+    color: var(--text-dim); font-size: 0.85em; text-align: center;
+    padding: 0 0 28px 0; line-height: 1.8;
+  }
+  .welcome h2 {
+    color: var(--green); font-size: 1.2em; margin-bottom: 4px;
+    text-shadow: 0 0 20px var(--green-glow);
+  }
+  .cursor-blink::after {
+    content: "\2588"; animation: blink 0.7s step-end infinite; color: var(--green);
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* User list */
+  .section-label {
+    font-size: 0.7em; color: var(--text-dim); margin-bottom: 10px;
+    text-transform: uppercase; letter-spacing: 2px;
+  }
+  .user-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; margin-bottom: 16px;
+  }
+  .user-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 16px 12px; text-align: center;
+    cursor: pointer; transition: all 0.15s ease;
+    font-family: inherit; font-size: 0.88em; color: var(--text);
+  }
+  .user-card:hover {
+    border-color: var(--green-dim); color: var(--green);
+    box-shadow: 0 0 12px var(--green-glow);
+  }
+  .user-card.selected {
+    border-color: var(--green); color: var(--green);
+    background: var(--green-glow);
+    box-shadow: 0 0 16px var(--green-glow);
+  }
+  .user-card .user-icon {
+    font-size: 1.6em; margin-bottom: 6px; display: block;
+    color: var(--green-dim);
+  }
+  .user-card.selected .user-icon { color: var(--green); }
+  .user-card .user-name { font-weight: 700; }
+
+  .new-user-btn {
+    width: 100%; background: transparent; border: 1px dashed var(--border);
+    border-radius: 6px; padding: 12px; text-align: center;
+    cursor: pointer; font-family: inherit; font-size: 0.8em;
+    color: var(--text-dim); transition: all 0.15s ease;
+    margin-bottom: 20px;
+  }
+  .new-user-btn:hover {
+    border-color: var(--amber); color: var(--amber);
+  }
+  .new-user-btn.active {
+    border-color: var(--amber); color: var(--amber);
+    border-style: solid;
+  }
+
+  /* PIN and forms */
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px; margin-top: 8px;
+    display: none;
+  }
+  .panel.visible { display: block; }
+  .panel-title {
+    font-size: 0.75em; color: var(--green-dim); margin-bottom: 16px;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .panel-title .highlight { color: var(--green); }
+
+  .name-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 14px; border-radius: 4px;
+    font-family: inherit; font-size: 0.9em; margin-bottom: 16px;
+  }
+  .name-input:focus { outline: 1px solid var(--amber); border-color: var(--amber); }
+  .name-input::placeholder { color: var(--text-dim); }
+
+  .pin-label {
+    font-size: 0.7em; color: var(--text-dim); margin-bottom: 10px;
+    display: block;
+  }
+  .pin-row {
+    display: flex; gap: 12px; justify-content: center; margin-bottom: 20px;
+  }
+  .pin-box {
+    width: 56px; height: 64px; text-align: center;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--green); font-family: inherit; font-size: 1.8em;
+    font-weight: 700; border-radius: 6px;
+    caret-color: var(--green);
+    -webkit-text-security: disc;
+  }
+  .pin-box:focus {
+    outline: none; border-color: var(--green);
+    box-shadow: 0 0 10px var(--green-glow);
+  }
+  .pin-box.error {
+    border-color: var(--red);
+    box-shadow: 0 0 10px rgba(255,51,51,0.3);
+  }
+
+  .submit-btn {
+    width: 100%; padding: 12px; border: none; border-radius: 4px;
+    font-family: inherit; font-weight: 700; font-size: 0.85em;
+    cursor: pointer; transition: all 0.15s ease;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .submit-btn.login-btn {
+    background: var(--green-dim); color: var(--bg);
+  }
+  .submit-btn.login-btn:hover { background: var(--green); }
+  .submit-btn.register-btn {
+    background: var(--amber); color: var(--bg);
+  }
+  .submit-btn.register-btn:hover { background: #ffc233; }
+  .submit-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .error-msg {
+    color: var(--red); font-size: 0.78em; text-align: center;
+    margin-top: 12px; min-height: 1.2em;
+  }
+  .loading-msg {
+    color: var(--amber); font-size: 0.78em; text-align: center;
+    margin-top: 12px;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--text-dim); border-top-color: var(--amber);
+    border-radius: 50%; animation: spin 0.6s linear infinite;
+    margin-right: 6px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Shake animation */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+  }
+  .shake { animation: shake 0.4s ease; }
+
+  /* Loading skeleton for user cards */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, #1a1a1a 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px; height: 72px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .pin-box { width: 52px; height: 58px; font-size: 1.5em; }
+    .pin-row { gap: 10px; }
+    .user-grid { gap: 8px; }
+    .container { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">piailot<span>:ai</span></div>
+</header>
+<main>
+  <div class="container">
+    <div class="welcome">
+      <h2>$ identify yourself<span class="cursor-blink"></span></h2>
+      authentication required
+    </div>
+
+    <div class="section-label">// select user</div>
+    <div class="user-grid" id="user-grid">
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+
+    <button class="new-user-btn" id="new-user-btn" onclick="toggleRegister()">+ new user</button>
+
+    <!-- Login panel -->
+    <div class="panel" id="login-panel">
+      <div class="panel-title">enter pin // <span class="highlight" id="login-user-display"></span></div>
+      <div class="pin-row" id="login-pin-row">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+      </div>
+      <button class="submit-btn login-btn" id="login-btn" onclick="doLogin()">authenticate</button>
+      <div id="login-feedback"></div>
+    </div>
+
+    <!-- Register panel -->
+    <div class="panel" id="register-panel">
+      <div class="panel-title">register new identity</div>
+      <input class="name-input" id="reg-name" type="text" placeholder="enter name..." autocomplete="off" maxlength="32">
+      <span class="pin-label">choose a 4-digit pin</span>
+      <div class="pin-row" id="reg-pin-row">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+      </div>
+      <button class="submit-btn register-btn" id="reg-btn" onclick="doRegister()">register</button>
+      <div id="reg-feedback"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+let selectedUser = null;
+
+// PIN auto-advance logic
+function setupPinInputs(container, onComplete) {
+  const boxes = container.querySelectorAll(".pin-box");
+  boxes.forEach((box, i) => {
+    box.addEventListener("input", () => {
+      box.value = box.value.replace(/[^0-9]/g, "");
+      if (box.value && i < boxes.length - 1) {
+        boxes[i + 1].focus();
+      }
+      if (i === boxes.length - 1 && box.value && onComplete) {
+        onComplete();
+      }
+    });
+    box.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !box.value && i > 0) {
+        boxes[i - 1].focus();
+        boxes[i - 1].value = "";
+      }
+      if (e.key === "Enter" && onComplete) {
+        onComplete();
+      }
+    });
+    box.addEventListener("focus", () => {
+      box.classList.remove("error");
+    });
+    // Handle paste
+    box.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const paste = (e.clipboardData || window.clipboardData).getData("text").replace(/[^0-9]/g, "");
+      for (let j = 0; j < Math.min(paste.length, boxes.length - i); j++) {
+        boxes[i + j].value = paste[j];
+      }
+      const nextIdx = Math.min(i + paste.length, boxes.length - 1);
+      boxes[nextIdx].focus();
+      if (paste.length >= boxes.length - i && onComplete) {
+        onComplete();
+      }
+    });
+  });
+}
+
+function getPin(containerId) {
+  const boxes = document.getElementById(containerId).querySelectorAll(".pin-box");
+  return Array.from(boxes).map(b => b.value).join("");
+}
+
+function clearPin(containerId) {
+  const boxes = document.getElementById(containerId).querySelectorAll(".pin-box");
+  boxes.forEach(b => { b.value = ""; b.classList.remove("error"); });
+  boxes[0].focus();
+}
+
+function showError(containerId, pinRowId, msg) {
+  const fb = document.getElementById(containerId);
+  fb.className = "error-msg";
+  fb.textContent = msg;
+  const boxes = document.getElementById(pinRowId).querySelectorAll(".pin-box");
+  boxes.forEach(b => b.classList.add("error"));
+  const row = document.getElementById(pinRowId);
+  row.classList.remove("shake");
+  void row.offsetWidth;
+  row.classList.add("shake");
+}
+
+function showLoading(containerId, msg) {
+  const fb = document.getElementById(containerId);
+  fb.className = "loading-msg";
+  fb.innerHTML = "<span class=\"spinner\"></span>" + msg;
+}
+
+function clearFeedback(containerId) {
+  document.getElementById(containerId).textContent = "";
+  document.getElementById(containerId).className = "";
+}
+
+// Load users
+async function loadUsers() {
+  const grid = document.getElementById("user-grid");
+  try {
+    const res = await fetch("/api/auth/users");
+    const users = await res.json();
+    grid.innerHTML = "";
+    if (users.length === 0) {
+      grid.innerHTML = "<div style=\"grid-column:1/-1;text-align:center;color:var(--text-dim);font-size:0.8em;padding:12px;\">no users found</div>";
+      return;
+    }
+    users.forEach(u => {
+      const card = document.createElement("button");
+      card.className = "user-card";
+      card.innerHTML = "<span class=\"user-icon\">&gt;_</span><span class=\"user-name\">" + escapeHtml(u.name) + "</span>";
+      card.addEventListener("click", () => selectUser(u, card));
+      grid.appendChild(card);
+    });
+  } catch(e) {
+    grid.innerHTML = "<div style=\"grid-column:1/-1;text-align:center;color:var(--red);font-size:0.8em;padding:12px;\">error loading users</div>";
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function selectUser(user, cardEl) {
+  selectedUser = user;
+  // Update card selection
+  document.querySelectorAll(".user-card").forEach(c => c.classList.remove("selected"));
+  cardEl.classList.add("selected");
+  // Hide register, show login
+  document.getElementById("register-panel").classList.remove("visible");
+  document.getElementById("new-user-btn").classList.remove("active");
+  document.getElementById("login-panel").classList.add("visible");
+  document.getElementById("login-user-display").textContent = user.name;
+  clearFeedback("login-feedback");
+  clearPin("login-pin-row");
+}
+
+function toggleRegister() {
+  const panel = document.getElementById("register-panel");
+  const btn = document.getElementById("new-user-btn");
+  const loginPanel = document.getElementById("login-panel");
+  const isVisible = panel.classList.contains("visible");
+  if (isVisible) {
+    panel.classList.remove("visible");
+    btn.classList.remove("active");
+  } else {
+    panel.classList.add("visible");
+    btn.classList.add("active");
+    loginPanel.classList.remove("visible");
+    document.querySelectorAll(".user-card").forEach(c => c.classList.remove("selected"));
+    selectedUser = null;
+    clearFeedback("reg-feedback");
+    document.getElementById("reg-name").value = "";
+    clearPin("reg-pin-row");
+    document.getElementById("reg-name").focus();
+  }
+}
+
+async function doLogin() {
+  const pin = getPin("login-pin-row");
+  if (pin.length < 4) {
+    showError("login-feedback", "login-pin-row", "enter all 4 digits");
+    return;
+  }
+  if (!selectedUser) return;
+
+  const btn = document.getElementById("login-btn");
+  btn.disabled = true;
+  showLoading("login-feedback", "authenticating...");
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: selectedUser.username, pin: pin })
+    });
+    if (res.ok) {
+      showLoading("login-feedback", "access granted. redirecting...");
+      setTimeout(() => { window.location.href = "/"; }, 500);
+    } else {
+      let msg = "authentication failed";
+      try { const data = await res.json(); if (data.error) msg = data.error; } catch(e) {}
+      showError("login-feedback", "login-pin-row", msg);
+      clearPin("login-pin-row");
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showError("login-feedback", "login-pin-row", "connection error");
+    btn.disabled = false;
+  }
+}
+
+async function doRegister() {
+  const name = document.getElementById("reg-name").value.trim();
+  const pin = getPin("reg-pin-row");
+  if (!name) {
+    document.getElementById("reg-feedback").className = "error-msg";
+    document.getElementById("reg-feedback").textContent = "name is required";
+    document.getElementById("reg-name").focus();
+    return;
+  }
+  if (pin.length < 4) {
+    showError("reg-feedback", "reg-pin-row", "enter all 4 digits");
+    return;
+  }
+
+  const btn = document.getElementById("reg-btn");
+  btn.disabled = true;
+  showLoading("reg-feedback", "registering...");
+
+  try {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name, pin: pin })
+    });
+    if (res.ok) {
+      showLoading("reg-feedback", "registered. redirecting...");
+      setTimeout(() => { window.location.href = "/"; }, 500);
+    } else {
+      let msg = "registration failed";
+      try { const data = await res.json(); if (data.error) msg = data.error; } catch(e) {}
+      showError("reg-feedback", "reg-pin-row", msg);
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showError("reg-feedback", "reg-pin-row", "connection error");
+    btn.disabled = false;
+  }
+}
+
+// Initialize
+setupPinInputs(document.getElementById("login-pin-row"), doLogin);
+setupPinInputs(document.getElementById("reg-pin-row"), doRegister);
+loadUsers();
+</script>
+</body>
+</html>

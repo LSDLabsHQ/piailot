@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>admin // piailot:ai</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #1a1a1a;
+    --input-bg: #1a1a1a;
+    --accent: #00ff41;
+    --accent-dim: rgba(0,255,65,0.15);
+    --text: #c0c0c0;
+    --muted: #606060;
+    --red: #ff4444;
+    --yellow: #ffbb33;
+    --font: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Top bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .topbar a.back {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 1.2em;
+    line-height: 1;
+  }
+  .topbar a.back:hover { color: var(--accent); }
+  .topbar .title {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1em;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 20px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--font);
+    font-size: 0.82em;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Tab content */
+  .tab-content { display: none; padding: 20px; }
+  .tab-content.active { display: block; }
+
+  /* Section headers */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .section-header h2 {
+    font-size: 0.95em;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .section-header .meta {
+    font-size: 0.75em;
+    color: var(--muted);
+  }
+
+  /* Buttons */
+  .btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.78em;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-accent {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-danger {
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .btn-danger:hover {
+    background: rgba(255,68,68,0.1);
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto;
+    margin-bottom: 24px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82em;
+  }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:hover { background: rgba(255,255,255,0.02); }
+  .badge {
+    display: inline-block;
+    font-size: 0.75em;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Inline create form */
+  .create-form {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .create-form.visible { display: block; }
+  .form-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .form-field label {
+    font-size: 0.72em;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-field input {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.85em;
+    padding: 7px 10px;
+    border-radius: 4px;
+    width: 180px;
+  }
+  .form-field input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+  }
+  .stat-card .stat-label {
+    font-size: 0.72em;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .stat-card .stat-value {
+    font-size: 1.4em;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .stat-card .stat-sub {
+    font-size: 0.75em;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Progress bars */
+  .progress-bar {
+    height: 6px;
+    background: var(--input-bg);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .progress-bar .fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+  }
+  .progress-bar .fill.warn { background: var(--yellow); }
+  .progress-bar .fill.crit { background: var(--red); }
+
+  /* Cache info */
+  .cache-info {
+    font-size: 0.78em;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* Summary cards for stats tab */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  /* Placeholder text */
+  .placeholder {
+    color: var(--muted);
+    font-size: 0.82em;
+    padding: 16px;
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    margin-bottom: 24px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.82em;
+    padding: 10px 18px;
+    border-radius: 6px;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+  }
+  .toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .toast.success { border-color: var(--accent); color: var(--accent); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  /* Sub-section titles */
+  .sub-title {
+    font-size: 0.85em;
+    color: var(--muted);
+    margin: 20px 0 10px;
+    font-weight: 400;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .tab-btn { padding: 8px 10px; font-size: 0.75em; }
+    .tab-content { padding: 14px; }
+    .form-field input { width: 140px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="back">&larr;</a>
+  <span class="title">// admin</span>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="users">Users</button>
+  <button class="tab-btn" data-tab="system">System</button>
+  <button class="tab-btn" data-tab="models">Models</button>
+  <button class="tab-btn" data-tab="stats">Stats</button>
+</div>
+
+<!-- Users Tab -->
+<div id="tab-users" class="tab-content active">
+  <div class="section-header">
+    <h2>User Management</h2>
+    <button class="btn btn-accent" id="toggle-create-btn">+ Create User</button>
+  </div>
+  <div class="create-form" id="create-form">
+    <div class="form-row">
+      <div class="form-field">
+        <label>Name</label>
+        <input type="text" id="create-name" placeholder="e.g. Alice" autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label>4-digit PIN</label>
+        <input type="text" id="create-pin" placeholder="1234" maxlength="4" pattern="[0-9]{4}" autocomplete="off">
+      </div>
+      <button class="btn btn-accent" id="create-btn">Create</button>
+      <button class="btn" id="cancel-create-btn">Cancel</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Username</th>
+          <th>Convos</th>
+          <th>Skills</th>
+          <th>Last Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="users-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- System Tab -->
+<div id="tab-system" class="tab-content">
+  <div class="section-header">
+    <h2>System Monitor</h2>
+    <span class="meta">auto-refresh: 30s</span>
+  </div>
+  <div class="stats-grid" id="system-grid"></div>
+</div>
+
+<!-- Models Tab -->
+<div id="tab-models" class="tab-content">
+  <div class="section-header">
+    <h2>Free Models</h2>
+    <button class="btn" id="refresh-models-btn">Refresh Cache</button>
+  </div>
+  <div class="cache-info" id="cache-info">Loading...</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Model ID</th>
+          <th>Context Length</th>
+        </tr>
+      </thead>
+      <tbody id="models-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Stats Tab -->
+<div id="tab-stats" class="tab-content">
+  <div class="section-header">
+    <h2>Usage Stats</h2>
+  </div>
+  <div class="summary-grid" id="stats-summary"></div>
+  <h3 class="sub-title">Per User</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Conversations</th>
+          <th>Messages</th>
+        </tr>
+      </thead>
+      <tbody id="stats-users-tbody"></tbody>
+    </table>
+  </div>
+  <h3 class="sub-title">Top Skills</h3>
+  <div id="stats-skills-wrap"></div>
+  <h3 class="sub-title">Top Models</h3>
+  <div id="stats-models-wrap"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  // --- Auth guard ---
+  async function checkAdmin() {
+    try {
+      var res = await fetch('/api/auth/me');
+      if (!res.ok) {
+        window.location.href = '/login.html';
+        return false;
+      }
+      var data = await res.json();
+      if (!data.is_admin) {
+        window.location.href = '/';
+        return false;
+      }
+      return true;
+    } catch (e) {
+      window.location.href = '/login.html';
+      return false;
+    }
+  }
+
+  // --- Toast ---
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+  function showToast(msg, type) {
+    toastEl.textContent = msg;
+    toastEl.className = 'toast visible ' + (type || 'success');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      toastEl.className = 'toast';
+    }, 3000);
+  }
+
+  // --- Tab switching ---
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  var tabContents = document.querySelectorAll('.tab-content');
+  var activeTab = 'users';
+  var systemInterval = null;
+
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var tab = btn.getAttribute('data-tab');
+      activeTab = tab;
+      tabBtns.forEach(function(b) { b.classList.remove('active'); });
+      tabContents.forEach(function(c) { c.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+
+      // Lazy load data
+      if (tab === 'users') loadUsers();
+      else if (tab === 'system') { loadSystem(); startSystemRefresh(); }
+      else if (tab === 'models') loadModels();
+      else if (tab === 'stats') loadStats();
+
+      // Stop system refresh when not on system tab
+      if (tab !== 'system') stopSystemRefresh();
+    });
+  });
+
+  function startSystemRefresh() {
+    stopSystemRefresh();
+    systemInterval = setInterval(loadSystem, 30000);
+  }
+  function stopSystemRefresh() {
+    if (systemInterval) { clearInterval(systemInterval); systemInterval = null; }
+  }
+
+  // --- Users tab ---
+  var usersTbody = document.getElementById('users-tbody');
+  var createForm = document.getElementById('create-form');
+  var toggleCreateBtn = document.getElementById('toggle-create-btn');
+  var createBtn = document.getElementById('create-btn');
+  var cancelCreateBtn = document.getElementById('cancel-create-btn');
+  var createNameInput = document.getElementById('create-name');
+  var createPinInput = document.getElementById('create-pin');
+
+  toggleCreateBtn.addEventListener('click', function() {
+    createForm.classList.toggle('visible');
+    if (createForm.classList.contains('visible')) {
+      createNameInput.value = '';
+      createPinInput.value = '';
+      createNameInput.focus();
+    }
+  });
+  cancelCreateBtn.addEventListener('click', function() {
+    createForm.classList.remove('visible');
+  });
+
+  createBtn.addEventListener('click', async function() {
+    var name = createNameInput.value.trim();
+    var pin = createPinInput.value.trim();
+    if (!name) { showToast('Name is required', 'error'); return; }
+    if (!/^\d{4}$/.test(pin)) { showToast('PIN must be 4 digits', 'error'); return; }
+
+    createBtn.disabled = true;
+    try {
+      var res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, pin: pin })
+      });
+      if (!res.ok) {
+        var err = await res.json().catch(function() { return {}; });
+        throw new Error(err.detail || 'Failed to create user');
+      }
+      showToast('User created');
+      createForm.classList.remove('visible');
+      await loadUsers();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+    createBtn.disabled = false;
+  });
+
+  async function loadUsers() {
+    try {
+      var res = await fetch('/api/admin/users');
+      if (!res.ok) throw new Error('Failed to load users');
+      var users = await res.json();
+      renderUsers(users);
+    } catch (e) {
+      usersTbody.innerHTML = '<tr><td colspan="6" style="color:var(--red)">Error loading users</td></tr>';
+    }
+  }
+
+  function renderUsers(users) {
+    usersTbody.innerHTML = '';
+    users.forEach(function(u) {
+      var tr = document.createElement('tr');
+
+      // Name + badge
+      var tdName = document.createElement('td');
+      tdName.textContent = u.name || u.username;
+      if (u.is_admin) {
+        var badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = 'admin';
+        tdName.appendChild(badge);
+      }
+
+      // Username
+      var tdUser = document.createElement('td');
+      tdUser.textContent = u.username;
+      tdUser.style.color = 'var(--muted)';
+
+      // Convos
+      var tdConvos = document.createElement('td');
+      tdConvos.textContent = u.conversations !== undefined ? u.conversations : '-';
+
+      // Skills
+      var tdSkills = document.createElement('td');
+      tdSkills.textContent = u.skills !== undefined ? u.skills : '-';
+
+      // Last active
+      var tdLast = document.createElement('td');
+      tdLast.style.color = 'var(--muted)';
+      tdLast.style.fontSize = '0.85em';
+      if (u.last_active) {
+        var d = new Date(u.last_active);
+        tdLast.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      } else {
+        tdLast.textContent = 'never';
+      }
+
+      // Actions
+      var tdActions = document.createElement('td');
+      var actionsDiv = document.createElement('div');
+      actionsDiv.className = 'actions';
+
+      var resetBtn = document.createElement('button');
+      resetBtn.className = 'btn';
+      resetBtn.textContent = 'Reset PIN';
+      resetBtn.addEventListener('click', (function(username) {
+        return async function() {
+          var newPin = prompt('Enter new 4-digit PIN for ' + username + ':');
+          if (!newPin) return;
+          if (!/^\d{4}$/.test(newPin)) { showToast('PIN must be 4 digits', 'error'); return; }
+          try {
+            var res = await fetch('/api/admin/users/' + encodeURIComponent(username) + '/pin', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pin: newPin })
+            });
+            if (!res.ok) throw new Error('Failed');
+            showToast('PIN reset for ' + username);
+          } catch (e) {
+            showToast('Failed to reset PIN', 'error');
+          }
+        };
+      })(u.username));
+      actionsDiv.appendChild(resetBtn);
+
+      if (!u.is_admin) {
+        var delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', (function(username) {
+          return async function() {
+            if (!confirm('Delete user "' + username + '"? This cannot be undone.')) return;
+            try {
+              var res = await fetch('/api/admin/users/' + encodeURIComponent(username), {
+                method: 'DELETE'
+              });
+              if (!res.ok) throw new Error('Failed');
+              showToast('User deleted');
+              await loadUsers();
+            } catch (e) {
+              showToast('Failed to delete user', 'error');
+            }
+          };
+        })(u.username));
+        actionsDiv.appendChild(delBtn);
+      }
+
+      tdActions.appendChild(actionsDiv);
+      tr.appendChild(tdName);
+      tr.appendChild(tdUser);
+      tr.appendChild(tdConvos);
+      tr.appendChild(tdSkills);
+      tr.appendChild(tdLast);
+      tr.appendChild(tdActions);
+      usersTbody.appendChild(tr);
+    });
+  }
+
+  // --- System tab ---
+  var systemGrid = document.getElementById('system-grid');
+
+  async function loadSystem() {
+    try {
+      var res = await fetch('/api/admin/system');
+      if (!res.ok) throw new Error('Failed');
+      var data = await res.json();
+      renderSystem(data);
+    } catch (e) {
+      systemGrid.innerHTML = '<div class="stat-card"><div class="stat-label">Error</div><div class="stat-value" style="color:var(--red);font-size:0.85em">Failed to load system info</div></div>';
+    }
+  }
+
+  function progressClass(pct) {
+    if (pct > 90) return 'crit';
+    if (pct > 70) return 'warn';
+    return '';
+  }
+
+  function renderSystem(d) {
+    var html = '';
+
+    // Memory
+    if (d.memory) {
+      var memPct = d.memory.percent || 0;
+      var memUsed = d.memory.used_mb !== undefined ? d.memory.used_mb : '?';
+      var memTotal = d.memory.total_mb !== undefined ? d.memory.total_mb : '?';
+      html += '<div class="stat-card"><div class="stat-label">Memory</div>'
+        + '<div class="stat-value">' + memUsed + '<span style="font-size:0.5em;color:var(--muted)"> / ' + memTotal + ' MB</span></div>'
+        + '<div class="progress-bar"><div class="fill ' + progressClass(memPct) + '" style="width:' + memPct + '%"></div></div>'
+        + '<div class="stat-sub">' + memPct + '% used</div></div>';
+    }
+
+    // CPU
+    if (d.cpu) {
+      var load1 = d.cpu.load_1m !== undefined ? d.cpu.load_1m : '?';
+      var load5 = d.cpu.load_5m !== undefined ? d.cpu.load_5m : '?';
+      var load15 = d.cpu.load_15m !== undefined ? d.cpu.load_15m : '?';
+      html += '<div class="stat-card"><div class="stat-label">CPU Load</div>'
+        + '<div class="stat-value">' + load1 + '</div>'
+        + '<div class="stat-sub">5m: ' + load5 + ' &middot; 15m: ' + load15 + '</div></div>';
+    }
+
+    // Disk
+    if (d.disk) {
+      var diskPct = d.disk.percent || 0;
+      var diskUsed = d.disk.used_gb !== undefined ? d.disk.used_gb : '?';
+      var diskTotal = d.disk.total_gb !== undefined ? d.disk.total_gb : '?';
+      var diskFree = d.disk.free_gb !== undefined ? d.disk.free_gb : '?';
+      html += '<div class="stat-card"><div class="stat-label">Disk</div>'
+        + '<div class="stat-value">' + diskUsed + '<span style="font-size:0.5em;color:var(--muted)"> / ' + diskTotal + ' GB</span></div>'
+        + '<div class="progress-bar"><div class="fill ' + progressClass(diskPct) + '" style="width:' + diskPct + '%"></div></div>'
+        + '<div class="stat-sub">' + diskFree + ' GB free</div></div>';
+    }
+
+    // Uptime
+    if (d.uptime !== undefined) {
+      html += '<div class="stat-card"><div class="stat-label">Uptime</div>'
+        + '<div class="stat-value" style="font-size:1em">' + d.uptime + '</div></div>';
+    }
+
+    // Temperature
+    if (d.temperature !== undefined && d.temperature !== null) {
+      html += '<div class="stat-card"><div class="stat-label">Temperature</div>'
+        + '<div class="stat-value">' + d.temperature + '<span style="font-size:0.6em;color:var(--muted)">&deg;C</span></div></div>';
+    }
+
+    systemGrid.innerHTML = html;
+  }
+
+  // --- Models tab ---
+  var modelsTbody = document.getElementById('models-tbody');
+  var cacheInfo = document.getElementById('cache-info');
+  var refreshModelsBtn = document.getElementById('refresh-models-btn');
+
+  refreshModelsBtn.addEventListener('click', async function() {
+    refreshModelsBtn.disabled = true;
+    refreshModelsBtn.textContent = 'Refreshing...';
+    try {
+      var res = await fetch('/api/admin/models/refresh', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed');
+      showToast('Model cache refreshed');
+      await loadModels();
+    } catch (e) {
+      showToast('Failed to refresh models', 'error');
+    }
+    refreshModelsBtn.disabled = false;
+    refreshModelsBtn.textContent = 'Refresh Cache';
+  });
+
+  async function loadModels() {
+    try {
+      var res = await fetch('/api/admin/models');
+      if (!res.ok) throw new Error('Failed');
+      var data = await res.json();
+      renderModels(data);
+    } catch (e) {
+      cacheInfo.textContent = 'Error loading models';
+      modelsTbody.innerHTML = '';
+    }
+  }
+
+  function renderModels(data) {
+    var models = data.models || [];
+    var age = data.cache_age_seconds;
+
+    if (age !== undefined && age !== null) {
+      cacheInfo.textContent = 'Cache age: ' + age + 's \u2014 ' + models.length + ' models';
+    } else {
+      cacheInfo.textContent = models.length > 0 ? models.length + ' models' : 'Cache empty';
+    }
+
+    modelsTbody.innerHTML = '';
+    models.forEach(function(m) {
+      var tr = document.createElement('tr');
+      var tdName = document.createElement('td');
+      tdName.textContent = m.name || m.id;
+      var tdId = document.createElement('td');
+      tdId.textContent = m.id || '';
+      tdId.style.color = 'var(--muted)';
+      tdId.style.fontSize = '0.85em';
+      var tdCtx = document.createElement('td');
+      tdCtx.textContent = m.context_length !== undefined ? m.context_length.toLocaleString() : '-';
+      tr.appendChild(tdName);
+      tr.appendChild(tdId);
+      tr.appendChild(tdCtx);
+      modelsTbody.appendChild(tr);
+    });
+  }
+
+  // --- Stats tab ---
+  var statsSummary = document.getElementById('stats-summary');
+  var statsUsersTbody = document.getElementById('stats-users-tbody');
+  var statsSkillsWrap = document.getElementById('stats-skills-wrap');
+  var statsModelsWrap = document.getElementById('stats-models-wrap');
+
+  async function loadStats() {
+    try {
+      var res = await fetch('/api/admin/stats');
+      if (!res.ok) throw new Error('Failed');
+      var data = await res.json();
+      renderStats(data);
+    } catch (e) {
+      statsSummary.innerHTML = '<div class="stat-card"><div class="stat-label">Error</div><div class="stat-value" style="color:var(--red);font-size:0.85em">Failed to load stats</div></div>';
+    }
+  }
+
+  function renderStats(data) {
+    // Summary cards
+    var totalUsers = data.total_users !== undefined ? data.total_users : '-';
+    var totalConvos = data.total_conversations !== undefined ? data.total_conversations : '-';
+    var totalMsgs = data.total_messages !== undefined ? data.total_messages : '-';
+    statsSummary.innerHTML =
+      '<div class="stat-card"><div class="stat-label">Users</div><div class="stat-value">' + totalUsers + '</div></div>'
+      + '<div class="stat-card"><div class="stat-label">Conversations</div><div class="stat-value">' + totalConvos + '</div></div>'
+      + '<div class="stat-card"><div class="stat-label">Messages</div><div class="stat-value">' + totalMsgs + '</div></div>';
+
+    // Per user table
+    statsUsersTbody.innerHTML = '';
+    var perUser = data.per_user || [];
+    perUser.forEach(function(u) {
+      var tr = document.createElement('tr');
+      var tdName = document.createElement('td');
+      tdName.textContent = u.name || u.username;
+      var tdConvos = document.createElement('td');
+      tdConvos.textContent = u.conversations !== undefined ? u.conversations : 0;
+      var tdMsgs = document.createElement('td');
+      tdMsgs.textContent = u.messages !== undefined ? u.messages : 0;
+      tr.appendChild(tdName);
+      tr.appendChild(tdConvos);
+      tr.appendChild(tdMsgs);
+      statsUsersTbody.appendChild(tr);
+    });
+
+    // Top skills
+    var topSkills = data.top_skills || [];
+    if (topSkills.length === 0) {
+      statsSkillsWrap.innerHTML = '<div class="placeholder">No skill usage yet</div>';
+    } else {
+      var skillTable = '<div class="table-wrap"><table><thead><tr><th>Skill</th><th>Conversations</th></tr></thead><tbody>';
+      topSkills.forEach(function(s) {
+        skillTable += '<tr><td>' + escapeHtml(s.skill || s.name || '') + '</td><td>' + (s.conversations !== undefined ? s.conversations : s.count || 0) + '</td></tr>';
+      });
+      skillTable += '</tbody></table></div>';
+      statsSkillsWrap.innerHTML = skillTable;
+    }
+
+    // Top models
+    var topModels = data.top_models || [];
+    if (topModels.length === 0) {
+      statsModelsWrap.innerHTML = '<div class="placeholder">No model usage yet</div>';
+    } else {
+      var modelTable = '<div class="table-wrap"><table><thead><tr><th>Model</th><th>Conversations</th></tr></thead><tbody>';
+      topModels.forEach(function(m) {
+        modelTable += '<tr><td>' + escapeHtml(m.model || m.name || '') + '</td><td>' + (m.conversations !== undefined ? m.conversations : m.count || 0) + '</td></tr>';
+      });
+      modelTable += '</tbody></table></div>';
+      statsModelsWrap.innerHTML = modelTable;
+    }
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  // --- Init ---
+  async function init() {
+    var ok = await checkAdmin();
+    if (ok) loadUsers();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

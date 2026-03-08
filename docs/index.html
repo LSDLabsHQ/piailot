@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>piailot - Self-hosted AI chat gateway</title>
+<meta name="description" content="Self-hosted AI chat gateway powered by OpenRouter free models. Run your own AI assistant on a Raspberry Pi.">
+<meta property="og:title" content="piailot - Self-hosted AI chat gateway">
+<meta property="og:description" content="Run your own AI assistant on a Raspberry Pi. Multi-user, PIN auth, custom skills, auto-failover. Free.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://piailot.com">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x2708;</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a0a0a; --surface: #111111; --border: #1a1a1a;
+    --green: #00ff41; --green-dim: #00aa2a; --green-glow: rgba(0,255,65,0.15);
+    --amber: #ffb000; --red: #ff3333; --cyan: #00d4ff;
+    --text: #c0c0c0; --text-dim: #606060;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; overflow-x: hidden;
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,10,10,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-logo {
+    color: var(--green); font-weight: 700; font-size: 1.1em;
+    text-shadow: 0 0 10px var(--green-glow);
+    text-decoration: none;
+  }
+  .nav-logo span { color: var(--text-dim); font-weight: 400; }
+  .nav-links { display: flex; gap: 24px; align-items: center; }
+  .nav-links a {
+    color: var(--text-dim); text-decoration: none; font-size: 0.82em;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--green); }
+  .nav-links .gh-btn {
+    color: var(--green); border: 1px solid var(--green-dim);
+    padding: 6px 14px; border-radius: 4px; font-size: 0.8em;
+  }
+  .nav-links .gh-btn:hover { background: var(--green-glow); }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 80px 24px 60px;
+    position: relative;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 600px 400px at 50% 40%, rgba(0,255,65,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 300px 300px at 30% 60%, rgba(0,212,255,0.03) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: clamp(2.4em, 6vw, 4.5em); color: var(--green);
+    text-shadow: 0 0 40px rgba(0,255,65,0.3);
+    margin-bottom: 8px; letter-spacing: -1px;
+  }
+  .hero h1 span { color: var(--text-dim); font-weight: 400; }
+  .hero .tagline {
+    font-size: clamp(0.9em, 2vw, 1.15em); color: var(--text-dim);
+    margin-bottom: 40px; max-width: 600px;
+  }
+  .hero .tagline em {
+    font-style: normal; color: var(--text);
+  }
+
+  .install-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px;
+    max-width: 700px; width: 100%; margin-bottom: 32px;
+    position: relative;
+  }
+  .install-box .prompt { color: var(--green-dim); flex-shrink: 0; }
+  .install-box code {
+    color: var(--amber); font-size: 0.82em;
+    overflow-x: auto; white-space: nowrap; flex: 1;
+  }
+  .install-box .copy-btn {
+    background: none; border: 1px solid var(--border); color: var(--text-dim);
+    font-family: inherit; font-size: 0.75em; padding: 4px 10px;
+    border-radius: 3px; cursor: pointer; white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .install-box .copy-btn:hover { border-color: var(--green-dim); color: var(--green); }
+
+  .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    display: inline-block; padding: 10px 24px; border-radius: 4px;
+    font-family: inherit; font-size: 0.85em; font-weight: 700;
+    text-decoration: none; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--green-dim); color: var(--bg); border: none;
+  }
+  .btn-primary:hover { background: var(--green); }
+  .btn-outline {
+    background: none; color: var(--text); border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--green-dim); color: var(--green); }
+
+  .hero-note {
+    margin-top: 48px; font-size: 0.72em; color: var(--text-dim);
+  }
+  .hero-note span { color: var(--cyan); }
+
+  /* ── Sections ── */
+  section { padding: 80px 24px; max-width: 900px; margin: 0 auto; }
+  section h2 {
+    color: var(--green); font-size: 1.4em; margin-bottom: 32px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  section h2::before { content: '## '; color: var(--text-dim); }
+
+  /* ── Features grid ── */
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .feature {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .feature:hover { border-color: var(--green-dim); }
+  .feature h3 {
+    color: var(--amber); font-size: 0.9em; margin-bottom: 8px;
+  }
+  .feature p { font-size: 0.82em; color: var(--text-dim); line-height: 1.6; }
+
+  /* ── How it works ── */
+  .steps { counter-reset: step; }
+  .step {
+    display: flex; gap: 20px; margin-bottom: 24px;
+    padding: 16px 20px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .step::before {
+    counter-increment: step; content: counter(step);
+    color: var(--green); font-size: 1.6em; font-weight: 700;
+    min-width: 36px; text-align: center;
+    text-shadow: 0 0 10px var(--green-glow);
+  }
+  .step-content h3 { color: var(--text); font-size: 0.9em; margin-bottom: 4px; }
+  .step-content p { font-size: 0.82em; color: var(--text-dim); }
+  .step-content code {
+    background: var(--bg); padding: 2px 6px; border-radius: 3px;
+    color: var(--amber); font-size: 0.95em;
+  }
+
+  /* ── Spec bar ── */
+  .specs {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    justify-content: center; margin-top: 24px;
+  }
+  .spec {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 10px 16px; text-align: center;
+    min-width: 140px;
+  }
+  .spec .val { color: var(--green); font-size: 1.3em; font-weight: 700; }
+  .spec .label { font-size: 0.72em; color: var(--text-dim); margin-top: 2px; }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 24px; text-align: center;
+    font-size: 0.75em; color: var(--text-dim);
+  }
+  footer a { color: var(--green-dim); text-decoration: none; }
+  footer a:hover { color: var(--green); }
+
+  /* ── Terminal window mockup ── */
+  .terminal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; max-width: 700px;
+    margin: 40px auto 0; text-align: left;
+  }
+  .terminal-bar {
+    background: var(--bg); padding: 8px 12px;
+    display: flex; gap: 6px; align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .terminal-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .terminal-dot.r { background: var(--red); }
+  .terminal-dot.y { background: var(--amber); }
+  .terminal-dot.g { background: var(--green); }
+  .terminal-title {
+    flex: 1; text-align: center; font-size: 0.7em; color: var(--text-dim);
+  }
+  .terminal-body {
+    padding: 16px 20px; font-size: 0.78em; line-height: 1.8;
+  }
+  .terminal-body .prompt-line { color: var(--text-dim); }
+  .terminal-body .prompt-line .cmd { color: var(--green); }
+  .terminal-body .output { color: var(--text-dim); }
+  .terminal-body .highlight { color: var(--green); }
+  .terminal-body .amber { color: var(--amber); }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    nav { padding: 0 16px; }
+    .nav-links { gap: 12px; }
+    .nav-links a:not(.gh-btn) { display: none; }
+    section { padding: 60px 16px; }
+    .install-box { flex-direction: column; align-items: stretch; }
+    .install-box .copy-btn { align-self: flex-end; }
+    .step { flex-direction: column; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">piailot<span>:ai</span></a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">Setup</a>
+    <a href="#private-access">Private Access</a>
+    <a href="https://github.com/LSDLabsHQ/piailot" class="gh-btn" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>piailot<span>:ai</span></h1>
+  <p class="tagline">
+    Self-hosted AI chat gateway powered by <em>OpenRouter free models</em>.<br>
+    Run your own AI assistant on a Raspberry Pi.
+  </p>
+
+  <div class="install-box">
+    <span class="prompt">$</span>
+    <code id="install-cmd">curl -sSL https://raw.githubusercontent.com/LSDLabsHQ/piailot/main/install.sh | bash</code>
+    <button class="copy-btn" onclick="copyInstall()">copy</button>
+  </div>
+
+  <div class="hero-ctas">
+    <a href="https://github.com/LSDLabsHQ/piailot" class="btn btn-primary" target="_blank" rel="noopener">View on GitHub</a>
+    <a href="#features" class="btn btn-outline">Learn More</a>
+  </div>
+
+  <p class="hero-note">
+    <span>Python 3.11+</span> &middot; <span>1GB RAM</span> &middot; <span>MIT License</span>
+  </p>
+</div>
+
+<section id="features">
+  <h2>Features</h2>
+  <div class="features">
+    <div class="feature">
+      <h3>Multi-user PIN auth</h3>
+      <p>Each user gets a unique 4-digit PIN. No passwords, no accounts, no OAuth. Just a PIN and you're in.</p>
+    </div>
+    <div class="feature">
+      <h3>AI skills system</h3>
+      <p>Create custom system prompts that shape AI behaviour. Build skills for coding, writing, translation, analysis -- whatever you need.</p>
+    </div>
+    <div class="feature">
+      <h3>Built-in tools</h3>
+      <p>Web search, calculator, and other utilities available to the AI. Attach tools to skills for task-specific capabilities.</p>
+    </div>
+    <div class="feature">
+      <h3>Auto-failover</h3>
+      <p>Automatically cycles through free OpenRouter models if one is rate-limited. Always finds a model that works.</p>
+    </div>
+    <div class="feature">
+      <h3>Streaming responses</h3>
+      <p>Real-time token streaming via Server-Sent Events. Responses appear as the AI thinks, not after.</p>
+    </div>
+    <div class="feature">
+      <h3>Admin panel</h3>
+      <p>Manage users, monitor system health, view model status, and track usage -- all from a web interface.</p>
+    </div>
+    <div class="feature">
+      <h3>Lightweight</h3>
+      <p>Runs comfortably on 1GB RAM. Raspberry Pi, cheap VPS, old laptop -- if it runs Python, it runs piailot.</p>
+    </div>
+    <div class="feature">
+      <h3>No database required</h3>
+      <p>File-based storage using JSON and Markdown. No PostgreSQL, no Redis, no Docker. Just files on disk.</p>
+    </div>
+    <div class="feature">
+      <h3>Terminal aesthetic</h3>
+      <p>Clean, monospace UI with a hacker-friendly feel. Dark theme, green accents, zero bloat.</p>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <h2>Get Started</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-content">
+        <h3>Get an OpenRouter API key</h3>
+        <p>Sign up at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" style="color:var(--cyan)">openrouter.ai/keys</a> -- free tier gives you access to dozens of AI models at no cost.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-content">
+        <h3>Run the installer</h3>
+        <p>One command sets up everything: clones the repo, creates a virtualenv, installs dependencies, configures nginx and systemd.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-content">
+        <h3>Open your browser</h3>
+        <p>Navigate to <code>http://your-pi.local</code> and create your first user. That's it -- you're chatting with AI.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot r"></div>
+      <div class="terminal-dot y"></div>
+      <div class="terminal-dot g"></div>
+      <div class="terminal-title">pi@raspberry ~ </div>
+    </div>
+    <div class="terminal-body">
+      <div class="prompt-line">$ <span class="cmd">curl -sSL https://raw.githubusercontent.com/LSDLabsHQ/piailot/main/install.sh | bash</span></div>
+      <br>
+      <div class="output">&nbsp;&nbsp;[+] Python 3.11</div>
+      <div class="output">&nbsp;&nbsp;[+] pip3</div>
+      <div class="output">&nbsp;&nbsp;[+] nginx</div>
+      <div class="output">&nbsp;&nbsp;[+] git</div>
+      <br>
+      <div class="output">&nbsp;&nbsp;[*] Cloning repository...</div>
+      <div class="output">&nbsp;&nbsp;[*] Installing dependencies...</div>
+      <div class="output">&nbsp;&nbsp;<span class="highlight">[+] Dependencies installed.</span></div>
+      <br>
+      <div class="output">&nbsp;&nbsp;[*] Enabling and starting services...</div>
+      <div class="output">&nbsp;&nbsp;<span class="highlight">[+] Services started.</span></div>
+      <br>
+      <div class="highlight">&nbsp;&nbsp;+-------------------------------------+</div>
+      <div class="highlight">&nbsp;&nbsp;|                                     |</div>
+      <div class="highlight">&nbsp;&nbsp;|     piailot:ai is now running!      |</div>
+      <div class="highlight">&nbsp;&nbsp;|                                     |</div>
+      <div class="highlight">&nbsp;&nbsp;+-------------------------------------+</div>
+    </div>
+  </div>
+</section>
+
+<section id="private-access">
+  <h2>Private Access</h2>
+  <p style="font-size:0.88em; color:var(--text-dim); margin-bottom:24px; max-width:700px;">
+    piailot binds to <code style="color:var(--amber)">127.0.0.1</code> by default &mdash; it's only accessible on your local network. For secure remote access from anywhere, pair it with <a href="https://tailscale.com" target="_blank" rel="noopener" style="color:var(--cyan)">Tailscale</a>.
+  </p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-content">
+        <h3>Install Tailscale on your Pi</h3>
+        <p><code>curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up</code></p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-content">
+        <h3>Install Tailscale on your devices</h3>
+        <p>Add your phone, laptop, or tablet to the same Tailscale network. All free for personal use.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-content">
+        <h3>Access from anywhere</h3>
+        <p>Open <code>http://&lt;your-pi-tailscale-name&gt;</code> from any device on your Tailnet. Encrypted, no port forwarding, no exposed services.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot r"></div>
+      <div class="terminal-dot y"></div>
+      <div class="terminal-dot g"></div>
+      <div class="terminal-title">pi@raspberry ~ </div>
+    </div>
+    <div class="terminal-body">
+      <div class="prompt-line">$ <span class="cmd">sudo tailscale up</span></div>
+      <br>
+      <div class="output">&nbsp;&nbsp;To authenticate, visit:</div>
+      <div class="output">&nbsp;&nbsp;<span class="amber">https://login.tailscale.com/a/xxxx</span></div>
+      <br>
+      <div class="output">&nbsp;&nbsp;<span class="highlight">Success.</span></div>
+      <br>
+      <div class="prompt-line">$ <span class="cmd">tailscale status</span></div>
+      <div class="output">&nbsp;&nbsp;100.x.x.x&nbsp;&nbsp;raspberry&nbsp;&nbsp;&nbsp;&nbsp;linux&nbsp;&nbsp;&nbsp;-</div>
+      <div class="output">&nbsp;&nbsp;100.x.x.x&nbsp;&nbsp;macbook&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;macOS&nbsp;&nbsp;&nbsp;-</div>
+      <div class="output">&nbsp;&nbsp;100.x.x.x&nbsp;&nbsp;iphone&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iOS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-</div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px; padding:16px 20px; background:var(--surface); border:1px solid var(--border); border-radius:6px; font-size:0.82em;">
+    <span style="color:var(--amber);">Why Tailscale?</span>
+    <span style="color:var(--text-dim);"> &mdash; No open ports. No dynamic DNS. No certificates to manage. Your Pi stays invisible to the internet while you access it from anywhere on Earth. Free for up to 100 devices.</span>
+  </div>
+</section>
+
+<section>
+  <h2>Specs</h2>
+  <div class="specs">
+    <div class="spec">
+      <div class="val">&lt;1GB</div>
+      <div class="label">RAM required</div>
+    </div>
+    <div class="spec">
+      <div class="val">0</div>
+      <div class="label">databases</div>
+    </div>
+    <div class="spec">
+      <div class="val">&infin;</div>
+      <div class="label">free models</div>
+    </div>
+    <div class="spec">
+      <div class="val">1</div>
+      <div class="label">command install</div>
+    </div>
+    <div class="spec">
+      <div class="val">MIT</div>
+      <div class="label">license</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>
+    piailot:ai &middot; built by <a href="https://github.com/LSDLabsHQ" target="_blank" rel="noopener">LSD Labs</a> &middot;
+    <a href="https://github.com/LSDLabsHQ/piailot" target="_blank" rel="noopener">GitHub</a> &middot;
+    <a href="https://github.com/LSDLabsHQ/piailot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+  </p>
+</footer>
+
+<script>
+function copyInstall() {
+  var cmd = document.getElementById('install-cmd').textContent;
+  navigator.clipboard.writeText(cmd).then(function() {
+    var btn = document.querySelector('.copy-btn');
+    btn.textContent = 'copied!';
+    setTimeout(function() { btn.textContent = 'copy'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>
