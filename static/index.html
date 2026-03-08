@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>piailot:ai</title>
+<script src="/themes.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -15,7 +16,7 @@
     --sidebar-w: 260px;
   }
   body {
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-family: var(--font, 'JetBrains Mono', 'Courier New', monospace);
     background: var(--bg); color: var(--text);
     height: 100dvh; display: flex; overflow: hidden;
   }
@@ -232,6 +233,7 @@
     <button class="new-chat-btn" id="new-chat-btn">+ New Chat</button>
     <a href="/skills.html">My Skills</a>
     <a href="/admin.html" id="admin-link" style="display:none">Admin</a>
+    <div id="theme-mount"></div>
   </div>
   <div class="sidebar-label">Conversations</div>
   <div id="convo-list"></div>
@@ -627,6 +629,9 @@
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
   });
+
+  // Theme picker
+  piailotThemes.picker(document.getElementById('theme-mount'));
 
   // Init
   async function init() {

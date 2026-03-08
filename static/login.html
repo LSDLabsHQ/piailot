@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>piailot:ai // login</title>
+<script src="/themes.js"></script>
 <style>
   @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap");
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -14,7 +15,7 @@
     --text: #c0c0c0; --text-dim: #606060;
   }
   body {
-    font-family: "JetBrains Mono", "Courier New", monospace;
+    font-family: var(--font, "JetBrains Mono", "Courier New", monospace);
     background: var(--bg); color: var(--text);
     min-height: 100dvh; display: flex; flex-direction: column;
   }
@@ -205,6 +206,7 @@
 <body>
 <header>
   <div class="logo">piailot<span>:ai</span></div>
+  <div id="theme-mount" style="margin-left:auto"></div>
 </header>
 <main>
   <div class="container">
@@ -465,6 +467,9 @@ async function doRegister() {
     btn.disabled = false;
   }
 }
+
+// Theme picker
+piailotThemes.picker(document.getElementById('theme-mount'));
 
 // Initialize
 setupPinInputs(document.getElementById("login-pin-row"), doLogin);
