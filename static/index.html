@@ -287,6 +287,38 @@
     color: var(--text); font-size: 0.85em;
   }
   .sports-table tr:last-child td { border-bottom: none; }
+
+  /* Message compose */
+  .compose-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .compose-tab {
+    padding: 8px 16px; cursor: pointer; color: var(--text-dim);
+    border-bottom: 2px solid transparent; font-size: 0.85em;
+    background: none; border-top: none; border-left: none; border-right: none;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .compose-tab:hover { color: var(--text); }
+  .compose-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+  .compose-subject {
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+    color: var(--text-dim); font-size: 0.8em;
+  }
+  .compose-body {
+    padding: 14px; white-space: pre-wrap; line-height: 1.6;
+    color: var(--text); font-size: 0.9em;
+  }
+  .compose-actions { padding: 10px 14px; display: flex; gap: 8px; border-top: 1px solid var(--border); }
+  .compose-btn {
+    background: var(--green-dim); color: var(--bg); border: none;
+    padding: 6px 14px; border-radius: 4px; font-family: inherit;
+    font-weight: 700; cursor: pointer; font-size: 0.8em;
+  }
+  .compose-btn:hover { background: var(--green); }
+  .compose-btn-outline {
+    background: none; color: var(--text-dim); border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 4px; font-family: inherit;
+    cursor: pointer; font-size: 0.8em;
+  }
+  .compose-btn-outline:hover { color: var(--text); border-color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -761,6 +793,7 @@
     else if (type === 'places') renderPlaces(el, d);
     else if (type === 'sports') renderSports(el, d);
     else if (type === 'ask_input') renderAskInput(el, d);
+    else if (type === 'message_compose') renderMessageCompose(el, d);
   }
 
   function renderImages(el, d) {
@@ -1017,6 +1050,47 @@
     }
 
     showQuestion(0);
+  }
+
+  function renderMessageCompose(el, d) {
+    var currentVar = 0;
+    function show(idx) {
+      var v = d.variants[idx];
+      var html = '<div class="widget-header">' + escText(d.summary_title) + '</div>';
+      if (d.variants.length > 1) {
+        html += '<div class="compose-tabs">';
+        d.variants.forEach(function(vr, i) {
+          html += '<button class="compose-tab' + (i === idx ? ' active' : '') + '" data-idx="' + i + '">' + escText(vr.label) + '</button>';
+        });
+        html += '</div>';
+      }
+      if (d.kind === 'email' && v.subject) {
+        html += '<div class="compose-subject">Subject: ' + escText(v.subject) + '</div>';
+      }
+      html += '<div class="compose-body">' + escText(v.body) + '</div>';
+      html += '<div class="compose-actions">';
+      if (d.kind === 'email' && v.subject) {
+        html += '<a class="compose-btn" href="mailto:?subject=' + encodeURIComponent(v.subject) + '&body=' + encodeURIComponent(v.body) + '" target="_blank">Open in email</a>';
+      }
+      html += '<button class="compose-btn-outline compose-copy">Copy</button>';
+      html += '</div>';
+      el.innerHTML = html;
+
+      // Tab switching
+      el.querySelectorAll('.compose-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() { show(parseInt(tab.dataset.idx)); });
+      });
+
+      // Copy
+      el.querySelector('.compose-copy').addEventListener('click', function() {
+        navigator.clipboard.writeText(v.body).then(function() {
+          var copyBtn = el.querySelector('.compose-copy');
+          if (copyBtn) copyBtn.textContent = 'Copied!';
+          setTimeout(function() { var btn = el.querySelector('.compose-copy'); if (btn) btn.textContent = 'Copy'; }, 1500);
+        });
+      });
+    }
+    show(0);
   }
 
   // Helpers

@@ -29,3 +29,26 @@ def _tool_ask_user_input(arguments: dict) -> str:
         return json.dumps({"error": "At least one valid question with 2+ options is required"})
 
     return json.dumps({"__piailot_widget__": "ask_input", "data": {"questions": validated}})
+
+
+def _tool_message_compose(arguments: dict) -> str:
+    kind = arguments.get("kind", "other")
+    if kind not in ("email", "text", "other"):
+        kind = "other"
+    summary_title = arguments.get("summary_title", "Message")
+    variants = arguments.get("variants", [])
+
+    if not variants:
+        return json.dumps({"error": "variants array is required"})
+
+    validated = []
+    for v in variants[:3]:
+        entry = {"label": v.get("label", "Draft"), "body": v.get("body", "")}
+        if kind == "email":
+            entry["subject"] = v.get("subject", "")
+        validated.append(entry)
+
+    return json.dumps({
+        "__piailot_widget__": "message_compose",
+        "data": {"kind": kind, "summary_title": summary_title, "variants": validated}
+    })

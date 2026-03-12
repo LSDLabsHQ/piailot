@@ -4,7 +4,7 @@ from tools.search import _tool_web_search, _tool_web_fetch, _tool_image_search
 from tools.context import _tool_calculator, _tool_user_time
 from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
 from tools.data import _tool_weather, _tool_places_search, _tool_sports_data
-from tools.widgets import _tool_ask_user_input
+from tools.widgets import _tool_ask_user_input, _tool_message_compose
 
 log = logging.getLogger("piailot")
 
@@ -203,6 +203,33 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "message_compose": {
+        "type": "function",
+        "function": {
+            "name": "message_compose",
+            "description": "Draft messages with multiple strategic variants. Supports email (with subject and mailto link), text, and other message types. Shows tabbed interface for comparing variants.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "description": "Message type: 'email', 'text', or 'other'", "enum": ["email", "text", "other"]},
+                    "summary_title": {"type": "string", "description": "Title for the message card"},
+                    "variants": {
+                        "type": "array",
+                        "description": "1-3 message variants, each with: label (string), body (string), subject (string, email only)",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "label": {"type": "string"},
+                                "body": {"type": "string"},
+                                "subject": {"type": "string"}
+                            }
+                        }
+                    }
+                },
+                "required": ["kind", "summary_title", "variants"],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -261,6 +288,8 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
             )
         elif name == "ask_user_input":
             return _tool_ask_user_input(arguments)
+        elif name == "message_compose":
+            return _tool_message_compose(arguments)
         else:
             return f"Unknown tool: {name}"
     except Exception as e:
