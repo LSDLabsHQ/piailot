@@ -2,7 +2,7 @@ from conversations import router as convos_router
 from skills import router as skills_router, parse_skill_md
 from admin import router as admin_router
 from auth import router as auth_router, get_current_user, get_user_dir
-from tools import TOOL_DEFINITIONS, execute_tool
+from tools import TOOL_DEFINITIONS, ALWAYS_ON_TOOLS, execute_tool
 import os
 import json
 import logging
@@ -258,7 +258,7 @@ async def chat(request: Request):
                             fn_args = json.loads(tc["function"]["arguments"])
                         except (json.JSONDecodeError, TypeError):
                             fn_args = {}
-                        tool_result = await execute_tool(fn_name, fn_args)
+                        tool_result = await execute_tool(fn_name, fn_args, context={"username": user["username"]})
                         log.info(f"Tool {fn_name} result: {tool_result[:200]}")
                         loop_messages.append({
                             "role": "tool",
