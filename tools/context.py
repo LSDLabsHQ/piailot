@@ -1,3 +1,4 @@
+import json
 import re
 import math
 import logging
@@ -42,8 +43,8 @@ def _tool_user_time(arguments: dict, context: dict = None) -> str:
         tz_name = "UTC"
 
     now = datetime.now(tz)
-    return (
-        f'{{"current_time": "{now.isoformat()}", '
-        f'"timezone": "{tz_name}", '
-        f'"day": "{now.strftime("%A")}"}}'
-    )
+    return json.dumps({
+        "current_time": now.isoformat(),
+        "timezone": tz_name,
+        "day": now.strftime("%A"),
+    })

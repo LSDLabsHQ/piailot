@@ -301,16 +301,22 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
         elif name == "user_time":
             return _tool_user_time(arguments, context)
         elif name == "memory_edit":
+            if not context or "username" not in context:
+                return "Error: user context required for memory operations"
             from auth import get_user_dir
-            user_dir = str(get_user_dir(context["username"])) if context else ""
+            user_dir = str(get_user_dir(context["username"]))
             return _tool_memory_edit(arguments, user_dir)
         elif name == "conversation_search":
+            if not context or "username" not in context:
+                return "Error: user context required for conversation search"
             from auth import get_user_dir
-            user_dir = str(get_user_dir(context["username"])) if context else ""
+            user_dir = str(get_user_dir(context["username"]))
             return _tool_conversation_search(arguments, user_dir)
         elif name == "recent_chats":
+            if not context or "username" not in context:
+                return "Error: user context required for recent chats"
             from auth import get_user_dir
-            user_dir = str(get_user_dir(context["username"])) if context else ""
+            user_dir = str(get_user_dir(context["username"]))
             return _tool_recent_chats(arguments, user_dir)
         elif name == "image_search":
             return await _tool_image_search(arguments.get("query", ""), arguments.get("max_results", 3))
