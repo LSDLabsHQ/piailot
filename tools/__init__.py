@@ -4,7 +4,7 @@ from tools.search import _tool_web_search, _tool_web_fetch, _tool_image_search
 from tools.context import _tool_calculator, _tool_user_time
 from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
 from tools.data import _tool_weather, _tool_places_search, _tool_sports_data
-from tools.widgets import _tool_ask_user_input, _tool_message_compose
+from tools.widgets import _tool_ask_user_input, _tool_message_compose, _tool_chart_display
 
 log = logging.getLogger("piailot")
 
@@ -230,6 +230,34 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "chart_display": {
+        "type": "function",
+        "function": {
+            "name": "chart_display",
+            "description": "Display interactive charts inline. Supports line, bar, and scatter chart styles with multiple data series, custom labels, and tooltips.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "series": {
+                        "type": "array",
+                        "description": "Data series array. Each: {name: string, data: number[]}",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "data": {"type": "array", "items": {"type": "number"}}
+                            }
+                        }
+                    },
+                    "style": {"type": "string", "description": "Chart type: 'line', 'bar', or 'scatter'", "enum": ["line", "bar", "scatter"]},
+                    "title": {"type": "string", "description": "Chart title (optional)"},
+                    "x_labels": {"type": "array", "items": {"type": "string"}, "description": "X-axis labels (optional)"},
+                    "y_label": {"type": "string", "description": "Y-axis label (optional)"}
+                },
+                "required": ["series", "style"],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -290,6 +318,8 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
             return _tool_ask_user_input(arguments)
         elif name == "message_compose":
             return _tool_message_compose(arguments)
+        elif name == "chart_display":
+            return _tool_chart_display(arguments)
         else:
             return f"Unknown tool: {name}"
     except Exception as e:

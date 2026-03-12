@@ -52,3 +52,34 @@ def _tool_message_compose(arguments: dict) -> str:
         "__piailot_widget__": "message_compose",
         "data": {"kind": kind, "summary_title": summary_title, "variants": validated}
     })
+
+
+def _tool_chart_display(arguments: dict) -> str:
+    series = arguments.get("series", [])
+    style = arguments.get("style", "line")
+    if style not in ("line", "bar", "scatter"):
+        style = "line"
+    title = arguments.get("title", "")
+    x_labels = arguments.get("x_labels", [])
+    y_label = arguments.get("y_label", "")
+
+    if not series:
+        return json.dumps({"error": "series array is required"})
+
+    validated = []
+    for s in series:
+        validated.append({
+            "name": s.get("name", f"Series {len(validated) + 1}"),
+            "data": s.get("data", []),
+        })
+
+    return json.dumps({
+        "__piailot_widget__": "chart",
+        "data": {
+            "series": validated,
+            "style": style,
+            "title": title,
+            "x_labels": x_labels,
+            "y_label": y_label,
+        }
+    })

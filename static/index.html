@@ -319,6 +319,13 @@
     cursor: pointer; font-size: 0.8em;
   }
   .compose-btn-outline:hover { color: var(--text); border-color: var(--text-dim); }
+
+  /* Chart */
+  .chart-container { padding: 14px; }
+  .chart-container canvas { max-height: 300px; }
+  .chart-fallback table { width: 100%; border-collapse: collapse; }
+  .chart-fallback th, .chart-fallback td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: right; font-size: 0.82em; }
+  .chart-fallback th { text-align: left; color: var(--amber); }
 </style>
 </head>
 <body>
@@ -794,6 +801,7 @@
     else if (type === 'sports') renderSports(el, d);
     else if (type === 'ask_input') renderAskInput(el, d);
     else if (type === 'message_compose') renderMessageCompose(el, d);
+    else if (type === 'chart') renderChart(el, d);
   }
 
   function renderImages(el, d) {
@@ -1091,6 +1099,94 @@
       });
     }
     show(0);
+  }
+
+  var _chartjsLoaded = false;
+  var _chartjsCallbacks = [];
+
+  function loadChartJS(cb) {
+    if (_chartjsLoaded) { cb(); return; }
+    _chartjsCallbacks.push(cb);
+    if (_chartjsCallbacks.length > 1) return;
+
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+    script.onload = function() {
+      _chartjsLoaded = true;
+      _chartjsCallbacks.forEach(function(c) { c(); });
+      _chartjsCallbacks = [];
+    };
+    script.onerror = function() {
+      _chartjsCallbacks.forEach(function(c) { c(true); });
+      _chartjsCallbacks = [];
+    };
+    setTimeout(function() { if (!_chartjsLoaded) script.onerror(); }, 10000);
+    document.head.appendChild(script);
+  }
+
+  function renderChart(el, d) {
+    var html = '';
+    if (d.title) html += '<div class="widget-header">' + escText(d.title) + '</div>';
+    html += '<div class="chart-container"><canvas></canvas></div>';
+    html += '<div class="chart-fallback" style="display:none"></div>';
+    el.innerHTML = html;
+
+    var canvas = el.querySelector('canvas');
+    var fallback = el.querySelector('.chart-fallback');
+
+    loadChartJS(function(err) {
+      if (err || !window.Chart) {
+        // Fallback: data table
+        canvas.style.display = 'none';
+        fallback.style.display = 'block';
+        var tbl = '<table><tr><th></th>';
+        d.series.forEach(function(s) { tbl += '<th>' + escText(s.name) + '</th>'; });
+        tbl += '</tr>';
+        var maxLen = Math.max.apply(null, d.series.map(function(s) { return s.data.length; }));
+        for (var i = 0; i < maxLen; i++) {
+          tbl += '<tr><td>' + (d.x_labels && d.x_labels[i] ? escText(d.x_labels[i]) : i) + '</td>';
+          d.series.forEach(function(s) { tbl += '<td>' + (s.data[i] !== undefined ? s.data[i] : '') + '</td>'; });
+          tbl += '</tr>';
+        }
+        tbl += '</table>';
+        fallback.innerHTML = tbl;
+        return;
+      }
+
+      // Resolve CSS variables — canvas doesn't support var() syntax
+      var cs = getComputedStyle(document.documentElement);
+      var textColor = cs.getPropertyValue('--text').trim();
+      var textDimColor = cs.getPropertyValue('--text-dim').trim();
+      var borderColor = cs.getPropertyValue('--border').trim();
+
+      var colors = ['#00ff41', '#00d4ff', '#ffb000', '#ff3333', '#b99aff'];
+      var datasets = d.series.map(function(s, i) {
+        var color = colors[i % colors.length];
+        var ds = { label: s.name, data: s.data, borderColor: color, backgroundColor: color + '33' };
+        if (d.style === 'scatter') { ds.type = 'scatter'; ds.showLine = false; }
+        if (d.style === 'bar') { ds.type = 'bar'; }
+        return ds;
+      });
+
+      new Chart(canvas, {
+        type: d.style === 'scatter' ? 'scatter' : d.style,
+        data: {
+          labels: d.x_labels.length ? d.x_labels : d.series[0].data.map(function(_, i) { return i; }),
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: textColor } } },
+          scales: {
+            x: { ticks: { color: textDimColor }, grid: { color: borderColor } },
+            y: {
+              title: { display: !!d.y_label, text: d.y_label, color: textDimColor },
+              ticks: { color: textDimColor }, grid: { color: borderColor }
+            }
+          }
+        }
+      });
+    });
   }
 
   // Helpers
