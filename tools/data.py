@@ -199,3 +199,80 @@ async def _places_google(client, query, latitude, longitude, max_results, api_ke
         })
 
     return json.dumps({"__piailot_widget__": "places", "data": {"query": query, "places": places}})
+
+
+async def _tool_sports_data(data_type: str, league: str, team: str = None) -> str:
+    sports_key = os.getenv("SPORTS_API_KEY", "1")  # TheSportsDB free key is "1"
+    base = "https://www.thesportsdb.com/api/v1/json"
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            if data_type == "standings":
+                # Lookup league ID first
+                league_resp = await client.get(f"{base}/{sports_key}/search_all_leagues.php", params={"s": league})
+                leagues = league_resp.json().get("countrys") or league_resp.json().get("leagues") or []
+                if not leagues:
+                    return json.dumps({"__piailot_widget__": "sports", "data": {"error": f"League '{league}' not found"}})
+                league_id = leagues[0].get("idLeague", "")
+                season = "2025-2026"
+
+                resp = await client.get(f"{base}/{sports_key}/lookuptable.php", params={"l": league_id, "s": season})
+                table = resp.json().get("table", [])
+                if not table:
+                    resp = await client.get(f"{base}/{sports_key}/lookuptable.php", params={"l": league_id, "s": "2025"})
+                    table = resp.json().get("table", [])
+
+                standings = []
+                for entry in table:
+                    row = {
+                        "rank": entry.get("intRank"),
+                        "team": entry.get("strTeam"),
+                        "played": entry.get("intPlayed"),
+                        "wins": entry.get("intWin"),
+                        "draws": entry.get("intDraw"),
+                        "losses": entry.get("intLoss"),
+                        "points": entry.get("intPoints"),
+                    }
+                    if team and team.lower() not in (row.get("team") or "").lower():
+                        continue
+                    standings.append(row)
+
+                return json.dumps({"__piailot_widget__": "sports", "data": {"type": "standings", "league": league, "standings": standings}})
+
+            elif data_type == "scores":
+                # Lookup league ID first
+                league_resp = await client.get(f"{base}/{sports_key}/search_all_leagues.php", params={"s": league})
+                leagues = league_resp.json().get("countrys") or league_resp.json().get("leagues") or []
+
+                if team:
+                    resp = await client.get(f"{base}/{sports_key}/searchteams.php", params={"t": team})
+                    teams = resp.json().get("teams", [])
+                    if not teams:
+                        return json.dumps({"__piailot_widget__": "sports", "data": {"error": f"Team '{team}' not found"}})
+                    team_id = teams[0].get("idTeam", "")
+                    resp = await client.get(f"{base}/{sports_key}/eventslast.php", params={"id": team_id})
+                    events = resp.json().get("results", [])
+                elif leagues:
+                    league_id = leagues[0].get("idLeague", "")
+                    resp = await client.get(f"{base}/{sports_key}/eventsseason.php", params={"id": league_id, "s": "2025-2026"})
+                    events = resp.json().get("events", []) or []
+                else:
+                    return json.dumps({"__piailot_widget__": "sports", "data": {"error": f"League '{league}' not found"}})
+
+                scores = []
+                for ev in (events or [])[:10]:
+                    scores.append({
+                        "event": ev.get("strEvent", ""),
+                        "date": ev.get("dateEvent", ""),
+                        "home": ev.get("strHomeTeam", ""),
+                        "away": ev.get("strAwayTeam", ""),
+                        "home_score": ev.get("intHomeScore"),
+                        "away_score": ev.get("intAwayScore"),
+                    })
+                return json.dumps({"__piailot_widget__": "sports", "data": {"type": "scores", "league": league, "scores": scores}})
+
+            else:
+                return json.dumps({"__piailot_widget__": "sports", "data": {"error": f"Unknown data_type '{data_type}'. Use: scores, standings"}})
+
+    except Exception as e:
+        return json.dumps({"__piailot_widget__": "sports", "data": {"error": f"Sports data error: {e}"}})

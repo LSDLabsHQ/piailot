@@ -3,7 +3,7 @@ import logging
 from tools.search import _tool_web_search, _tool_web_fetch, _tool_image_search
 from tools.context import _tool_calculator, _tool_user_time
 from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
-from tools.data import _tool_weather, _tool_places_search
+from tools.data import _tool_weather, _tool_places_search, _tool_sports_data
 
 log = logging.getLogger("piailot")
 
@@ -161,6 +161,22 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "sports_data": {
+        "type": "function",
+        "function": {
+            "name": "sports_data",
+            "description": "Get live sports scores, league standings, and team stats. Supports multiple leagues and sports.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "description": "Data type: 'scores' or 'standings'", "enum": ["scores", "standings"]},
+                    "league": {"type": "string", "description": "League name (e.g. 'English Premier League', 'NBA')"},
+                    "team": {"type": "string", "description": "Optional team name filter"}
+                },
+                "required": ["type", "league"],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -210,6 +226,12 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
                 arguments.get("latitude"),
                 arguments.get("longitude"),
                 arguments.get("max_results", 5),
+            )
+        elif name == "sports_data":
+            return await _tool_sports_data(
+                arguments.get("type", ""),
+                arguments.get("league", ""),
+                arguments.get("team"),
             )
         else:
             return f"Unknown tool: {name}"
