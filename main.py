@@ -5,9 +5,11 @@ from auth import router as auth_router, get_current_user, get_user_dir
 from tools import TOOL_DEFINITIONS, ALWAYS_ON_TOOLS, execute_tool
 from tools.memory import get_memory_block
 import os
+import re
 import json
 import logging
 import asyncio
+import uuid
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -123,6 +125,45 @@ def _load_skill(username: str, skill_name: str) -> dict | None:
     except Exception as e:
         log.error(f"Failed to load skill {skill_name}: {e}")
         return None
+
+
+def _parse_xml_tool_calls(content: str) -> list[dict] | None:
+    """Parse XML <tool_call> tags emitted by models that don't support function calling.
+
+    Handles two formats:
+    1. XML-style: <function=name><parameter=key>value</parameter></function>
+    2. JSON-style: {"name": "...", "arguments": {...}}
+
+    Returns a list in OpenAI tool_calls format, or None if parsing fails.
+    """
+    matches = re.findall(r"<tool_call>(.*?)</tool_call>", content, re.DOTALL)
+    if not matches:
+        return None
+    calls = []
+    for raw in matches:
+        fn_match = re.search(r"<function=(\w+)>", raw)
+        if fn_match:
+            fn_name = fn_match.group(1)
+            # Extract <parameter=key>value</parameter> pairs
+            params = {}
+            for pm in re.finditer(r"<parameter=(\w+)>(.*?)</parameter>", raw, re.DOTALL):
+                params[pm.group(1)] = pm.group(2).strip()
+            param_str = json.dumps(params)
+        else:
+            # Try JSON format
+            try:
+                parsed = json.loads(raw.strip())
+                fn_name = parsed.get("name", "")
+                param_str = json.dumps(parsed.get("arguments", {}))
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        calls.append({
+            "id": f"xml_{uuid.uuid4().hex[:8]}",
+            "type": "function",
+            "function": {"name": fn_name, "arguments": param_str},
+        })
+    return calls if calls else None
 
 
 async def _call_openrouter(client, headers, model_id, messages, tools=None):
@@ -267,10 +308,26 @@ async def chat(request: Request):
 
                 # Tool loop — max 10 rounds
                 loop_messages = list(messages)
+                xml_tool_mode = False  # Track if model uses XML tool calls
                 for round_num in range(10):
                     choice = result_data.get("choices", [{}])[0]
                     message = choice.get("message", {})
                     tool_calls = message.get("tool_calls")
+
+                    # Some models emit XML <tool_call> tags instead of using the
+                    # tool_calls response field. Parse those into standard format.
+                    if not tool_calls:
+                        content = message.get("content") or ""
+                        if "<tool_call>" in content:
+                            tool_calls = _parse_xml_tool_calls(content)
+                            if tool_calls:
+                                xml_tool_mode = True
+                                cleaned = re.sub(r"<tool_call>.*?</tool_call>", "", content, flags=re.DOTALL).strip()
+                                message = {
+                                    "role": "assistant",
+                                    "content": cleaned or None,
+                                    "tool_calls": tool_calls,
+                                }
 
                     if not tool_calls:
                         # No more tool calls — emit the final text
@@ -292,10 +349,15 @@ async def chat(request: Request):
                         yield "data: [DONE]\n\n"
                         return
 
-                    # Append the assistant message with tool_calls
-                    loop_messages.append(message)
+                    # Append the assistant message
+                    if xml_tool_mode:
+                        # For XML tool models, append as plain assistant message
+                        loop_messages.append({"role": "assistant", "content": message.get("content") or ""})
+                    else:
+                        loop_messages.append(message)
 
                     # Execute each tool call
+                    tool_results_text = []
                     for tc in tool_calls:
                         fn_name = tc["function"]["name"]
                         try:
@@ -313,15 +375,24 @@ async def chat(request: Request):
                         except (json.JSONDecodeError, TypeError):
                             pass
 
-                        loop_messages.append({
-                            "role": "tool",
-                            "tool_call_id": tc["id"],
-                            "content": tool_result,
-                        })
+                        if xml_tool_mode:
+                            # Collect results for a single user message
+                            tool_results_text.append(f"[Tool '{fn_name}' returned: {tool_result}]")
+                        else:
+                            loop_messages.append({
+                                "role": "tool",
+                                "tool_call_id": tc["id"],
+                                "content": tool_result,
+                            })
+
+                    if xml_tool_mode:
+                        # Send tool results as a user message the model can understand
+                        loop_messages.append({"role": "user", "content": "\n".join(tool_results_text)})
 
                     # Call the model again with tool results
                     result_data = await _call_openrouter(
-                        client, headers, used_model, loop_messages, tools=tools_for_request
+                        client, headers, used_model, loop_messages,
+                        tools=None if xml_tool_mode else tools_for_request,
                     )
                     if result_data is None:
                         error_chunk = {"choices": [{"delta": {"content": "[model error during tool loop]"}, "finish_reason": "stop"}]}
