@@ -2,6 +2,7 @@ import json
 import logging
 from tools.search import _tool_web_search, _tool_web_fetch
 from tools.context import _tool_calculator, _tool_user_time
+from tools.memory import _tool_memory_edit
 
 log = logging.getLogger("piailot")
 
@@ -64,6 +65,23 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "memory_edit": {
+        "type": "function",
+        "function": {
+            "name": "memory_edit",
+            "description": "Manage persistent memory about the user. Commands: 'view' (list all facts), 'add' (store a new fact), 'remove' (delete by index), 'replace' (update by index). Memory persists across conversations.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "One of: view, add, remove, replace", "enum": ["view", "add", "remove", "replace"]},
+                    "content": {"type": "string", "description": "Fact text to add (max 300 chars). Required for 'add'."},
+                    "index": {"type": "integer", "description": "0-indexed position. Required for 'remove' and 'replace'."},
+                    "replacement": {"type": "string", "description": "New text. Required for 'replace'."}
+                },
+                "required": ["command"],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -71,7 +89,7 @@ TOOL_DEFINITIONS["datetime"] = TOOL_DEFINITIONS["user_time"]
 
 # ── Always-on tools (injected into every request) ──
 
-ALWAYS_ON_TOOLS = ["user_time"]
+ALWAYS_ON_TOOLS = ["user_time", "memory_edit"]
 
 # ── Tool executor ──
 
@@ -91,6 +109,10 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
             return _tool_calculator(arguments.get("expression", ""))
         elif name == "user_time":
             return _tool_user_time(arguments, context)
+        elif name == "memory_edit":
+            from auth import get_user_dir
+            user_dir = str(get_user_dir(context["username"])) if context else ""
+            return _tool_memory_edit(arguments, user_dir)
         else:
             return f"Unknown tool: {name}"
     except Exception as e:
