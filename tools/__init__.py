@@ -1,6 +1,6 @@
 import json
 import logging
-from tools.search import _tool_web_search, _tool_web_fetch
+from tools.search import _tool_web_search, _tool_web_fetch, _tool_image_search
 from tools.context import _tool_calculator, _tool_user_time
 from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
 
@@ -18,6 +18,21 @@ TOOL_DEFINITIONS = {
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "The search query"}
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    "image_search": {
+        "type": "function",
+        "function": {
+            "name": "image_search",
+            "description": "Search for images on the web. Returns image URLs with thumbnails.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Image search query (3-6 words work best)"},
+                    "max_results": {"type": "integer", "description": "Number of results (3-5, default 3)"}
                 },
                 "required": ["query"],
             },
@@ -153,6 +168,8 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
             from auth import get_user_dir
             user_dir = str(get_user_dir(context["username"])) if context else ""
             return _tool_recent_chats(arguments, user_dir)
+        elif name == "image_search":
+            return await _tool_image_search(arguments.get("query", ""), arguments.get("max_results", 3))
         else:
             return f"Unknown tool: {name}"
     except Exception as e:

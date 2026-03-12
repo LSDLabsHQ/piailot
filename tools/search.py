@@ -1,5 +1,6 @@
 import re
 import html
+import json
 import logging
 import httpx
 
@@ -55,3 +56,43 @@ async def _tool_web_fetch(url_str: str) -> str:
             return text[:3000]
     except Exception as e:
         return f"Fetch error: {e}"
+
+
+async def _tool_image_search(query: str, max_results: int = 3) -> str:
+    max_results = max(3, min(max_results, 5))
+    url = "https://duckduckgo.com/"
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            # First get the vqd token
+            resp = await client.get(
+                url,
+                params={"q": query},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; PiAiLot/1.0)"},
+            )
+            # Extract vqd token from page
+            vqd_match = re.search(r'vqd=["\']([^"\']+)', resp.text)
+            if not vqd_match:
+                return json.dumps({"__piailot_widget__": "images", "data": {"query": query, "images": [], "error": "Could not get search token"}})
+
+            vqd = vqd_match.group(1)
+
+            # Fetch images
+            img_resp = await client.get(
+                "https://duckduckgo.com/i.js",
+                params={"q": query, "vqd": vqd, "l": "us-en", "o": "json"},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; PiAiLot/1.0)"},
+            )
+            img_data = img_resp.json()
+            results = []
+            for item in img_data.get("results", [])[:max_results]:
+                results.append({
+                    "title": item.get("title", ""),
+                    "url": item.get("image", ""),
+                    "thumbnail_url": item.get("thumbnail", ""),
+                    "source": item.get("source", ""),
+                })
+
+            widget = {"__piailot_widget__": "images", "data": {"query": query, "images": results}}
+            return json.dumps(widget)
+    except Exception as e:
+        return json.dumps({"__piailot_widget__": "images", "data": {"query": query, "images": [], "error": str(e)}})
