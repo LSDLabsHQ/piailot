@@ -3,7 +3,7 @@ import logging
 from tools.search import _tool_web_search, _tool_web_fetch, _tool_image_search
 from tools.context import _tool_calculator, _tool_user_time
 from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
-from tools.data import _tool_weather
+from tools.data import _tool_weather, _tool_places_search
 
 log = logging.getLogger("piailot")
 
@@ -144,6 +144,23 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "places_search": {
+        "type": "function",
+        "function": {
+            "name": "places_search",
+            "description": "Search for places and locations. Returns place names, addresses, coordinates, and an interactive map.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query (e.g. 'coffee shops near Camden')"},
+                    "latitude": {"type": "number", "description": "Optional latitude for proximity bias"},
+                    "longitude": {"type": "number", "description": "Optional longitude for proximity bias"},
+                    "max_results": {"type": "integer", "description": "Number of results (1-10, default 5)"}
+                },
+                "required": ["query"],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -187,6 +204,13 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
             return await _tool_image_search(arguments.get("query", ""), arguments.get("max_results", 3))
         elif name == "weather":
             return await _tool_weather(arguments.get("location", ""))
+        elif name == "places_search":
+            return await _tool_places_search(
+                arguments.get("query", ""),
+                arguments.get("latitude"),
+                arguments.get("longitude"),
+                arguments.get("max_results", 5),
+            )
         else:
             return f"Unknown tool: {name}"
     except Exception as e:
