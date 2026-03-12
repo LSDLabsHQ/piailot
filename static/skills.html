@@ -256,12 +256,21 @@
 </div>
 
 <script>
-var TOOLS = [
-  { id: 'web_search', desc: 'Search the web' },
-  { id: 'web_fetch',  desc: 'Fetch a web page' },
-  { id: 'calculator', desc: 'Evaluate math' },
-  { id: 'datetime',   desc: 'Current date/time' }
-];
+var TOOLS = [];
+
+async function loadTools() {
+  try {
+    var res = await fetch('/api/tools');
+    if (res.ok) TOOLS = await res.json();
+  } catch(e) {
+    // Fallback
+    TOOLS = [
+      { id: 'web_search', desc: 'Search the web' },
+      { id: 'web_fetch', desc: 'Fetch a web page' },
+      { id: 'calculator', desc: 'Evaluate math' },
+    ];
+  }
+}
 
 var editingSkill = null;
 var deletingSkill = null;
@@ -585,7 +594,10 @@ piailotThemes.picker(document.getElementById('theme-mount'));
 // Init
 (async function() {
   var ok = await checkAuth();
-  if (ok) loadSkills();
+  if (ok) {
+    await loadTools();
+    loadSkills();
+  }
 })();
 </script>
 </body>

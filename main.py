@@ -96,6 +96,23 @@ async def get_models():
     return JSONResponse([{"id": m["id"], "name": m["name"]} for m in models])
 
 
+@app.get("/api/tools")
+async def list_available_tools():
+    """Return available opt-in tools with descriptions for the skill editor."""
+    from tools import TOOL_DEFINITIONS
+    from skills import AVAILABLE_TOOLS
+    result = []
+    for name in AVAILABLE_TOOLS:
+        defn = TOOL_DEFINITIONS.get(name)
+        if defn:
+            func = defn.get("function", {})
+            result.append({
+                "id": name,
+                "desc": func.get("description", "")[:80],
+            })
+    return JSONResponse(result)
+
+
 def _load_skill(username: str, skill_name: str) -> dict | None:
     """Load and parse a SKILL.md file for the given user and skill name."""
     skill_path = get_user_dir(username) / "skills" / skill_name / "SKILL.md"
