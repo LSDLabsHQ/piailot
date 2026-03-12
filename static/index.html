@@ -562,6 +562,8 @@
       var body = { messages: messages, model: modelSelect.value };
       var sk = skillSelect.value;
       if (sk) body.skill = sk;
+      // Send browser timezone
+      try { body.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(e) {}
 
       var res = await fetch('/api/chat', {
         method: 'POST',
@@ -583,6 +585,15 @@
           if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
           try {
             var json = JSON.parse(line.slice(6));
+            // Check for widget events
+            if (json.__piailot_widget__) {
+              var widgetDiv = document.createElement('div');
+              widgetDiv.className = 'piailot-widget piailot-widget-' + json.__piailot_widget__;
+              widgetDiv.dataset.widget = JSON.stringify(json);
+              chatEl.insertBefore(widgetDiv, assistantDiv);
+              // Widget rendering will be added in Phase 2/3
+              continue;
+            }
             var delta = '';
             if (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) {
               delta = json.choices[0].delta.content;

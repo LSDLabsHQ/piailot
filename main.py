@@ -3,6 +3,7 @@ from skills import router as skills_router, parse_skill_md
 from admin import router as admin_router
 from auth import router as auth_router, get_current_user, get_user_dir
 from tools import TOOL_DEFINITIONS, ALWAYS_ON_TOOLS, execute_tool
+from tools.memory import get_memory_block
 import os
 import json
 import logging
@@ -160,22 +161,48 @@ async def chat(request: Request):
 
     # ── Resolve skill (system prompt + tools) ───────────────────────
     system_prompt = None
-    tool_names = []
+    skill_tool_names = []
     if skill_name:
-        user = get_current_user(request)
-        if user:
-            skill_data = _load_skill(user["username"], skill_name)
+        user_data = get_current_user(request)
+        if user_data:
+            skill_data = _load_skill(user_data["username"], skill_name)
             if skill_data:
                 system_prompt = skill_data.get("system_prompt", "")
-                tool_names = skill_data.get("tools", [])
-                log.info(f"Loaded skill '{skill_name}' with tools: {tool_names}")
+                skill_tool_names = skill_data.get("tools", [])
+                log.info(f"Loaded skill '{skill_name}' with tools: {skill_tool_names}")
 
-    # Prepend system prompt
+    # Inject user memory into system prompt
+    username = user["username"]
+    memory_block = get_memory_block(str(get_user_dir(username)))
+
+    # Browser timezone from request
+    browser_tz = body.get("timezone")
+
+    # Build system prompt with memory
+    system_parts = []
+    if memory_block:
+        system_parts.append(memory_block)
     if system_prompt:
-        messages = [{"role": "system", "content": system_prompt}] + messages
+        system_parts.append(system_prompt)
+    full_system = "\n\n".join(system_parts) if system_parts else None
 
-    # Build tool definitions for this request
+    if full_system:
+        messages = [{"role": "system", "content": full_system}] + messages
+
+    # Build tool definitions: always-on + skill-specific
+    tool_names = list(ALWAYS_ON_TOOLS)
+    for t in skill_tool_names:
+        # Backwards compat: datetime -> user_time
+        mapped = "user_time" if t == "datetime" else t
+        if mapped not in tool_names:
+            tool_names.append(mapped)
+
     tools_for_request = [TOOL_DEFINITIONS[t] for t in tool_names if t in TOOL_DEFINITIONS]
+
+    # Build context for tool execution
+    tool_context = {"username": username}
+    if browser_tz:
+        tool_context["timezone"] = browser_tz
 
     # ── Model fallback order ────────────────────────────────────────
     models = await fetch_free_models()
@@ -258,7 +285,7 @@ async def chat(request: Request):
                             fn_args = json.loads(tc["function"]["arguments"])
                         except (json.JSONDecodeError, TypeError):
                             fn_args = {}
-                        tool_result = await execute_tool(fn_name, fn_args, context={"username": user["username"]})
+                        tool_result = await execute_tool(fn_name, fn_args, context=tool_context)
                         log.info(f"Tool {fn_name} result: {tool_result[:200]}")
                         loop_messages.append({
                             "role": "tool",
