@@ -5,6 +5,7 @@ from tools.context import _tool_calculator, _tool_user_time
 from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
 from tools.data import _tool_weather, _tool_places_search, _tool_sports_data
 from tools.widgets import _tool_ask_user_input, _tool_message_compose, _tool_chart_display
+from tools.discovery import _tool_search
 
 log = logging.getLogger("piailot")
 
@@ -258,6 +259,20 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "tool_search": {
+        "type": "function",
+        "function": {
+            "name": "tool_search",
+            "description": "Search for available tools by keyword. Use this when you're not sure which tool to use for a task.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search keywords to match against tool names and descriptions"}
+                },
+                "required": ["query"],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -265,7 +280,7 @@ TOOL_DEFINITIONS["datetime"] = TOOL_DEFINITIONS["user_time"]
 
 # ── Always-on tools (injected into every request) ──
 
-ALWAYS_ON_TOOLS = ["user_time", "memory_edit", "conversation_search", "recent_chats"]
+ALWAYS_ON_TOOLS = ["user_time", "memory_edit", "conversation_search", "recent_chats", "tool_search"]
 
 # ── Tool executor ──
 
@@ -320,6 +335,8 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
             return _tool_message_compose(arguments)
         elif name == "chart_display":
             return _tool_chart_display(arguments)
+        elif name == "tool_search":
+            return _tool_search(arguments.get("query", ""), TOOL_DEFINITIONS)
         else:
             return f"Unknown tool: {name}"
     except Exception as e:
