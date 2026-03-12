@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from pathlib import Path
 
 log = logging.getLogger("piailot")
@@ -94,3 +95,90 @@ def _tool_memory_edit(arguments: dict, user_dir: str) -> str:
 
     else:
         return f"Error: unknown command '{command}'. Valid commands: view, add, remove, replace"
+
+
+def _tool_conversation_search(arguments: dict, user_dir: str) -> str:
+    query = arguments.get("query", "").lower().strip()
+    max_results = min(arguments.get("max_results", 5), 10)
+    if not query:
+        return json.dumps({"results": [], "error": "query is required"})
+
+    history_dir = Path(user_dir) / "history"
+    if not history_dir.exists():
+        return json.dumps({"results": []})
+
+    # Get conversation files sorted by modification time (newest first), limit 100
+    files = sorted(history_dir.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)[:100]
+
+    results = []
+    start_time = time.monotonic()
+
+    for f in files:
+        # 5-second timeout
+        if time.monotonic() - start_time > 5.0:
+            break
+        try:
+            convo = json.loads(f.read_text())
+            snippets = []
+            for msg in convo.get("messages", []):
+                content = msg.get("content", "")
+                if query in content.lower():
+                    # Extract snippet around match
+                    idx = content.lower().index(query)
+                    start = max(0, idx - 40)
+                    end = min(len(content), idx + len(query) + 40)
+                    snippet = ("..." if start > 0 else "") + content[start:end] + ("..." if end < len(content) else "")
+                    snippets.append(snippet)
+
+            if snippets:
+                results.append({
+                    "conversation_id": convo.get("id", f.stem),
+                    "title": convo.get("title", "Untitled"),
+                    "timestamp": convo.get("updated", convo.get("created", "")),
+                    "matching_snippets": snippets[:3],
+                })
+                if len(results) >= max_results:
+                    break
+        except (json.JSONDecodeError, Exception):
+            continue
+
+    return json.dumps({"results": results})
+
+
+def _tool_recent_chats(arguments: dict, user_dir: str) -> str:
+    count = min(arguments.get("count", 5), 20)
+    sort_order = arguments.get("sort", "newest")
+    before = arguments.get("before")
+    after = arguments.get("after")
+
+    history_dir = Path(user_dir) / "history"
+    if not history_dir.exists():
+        return json.dumps({"conversations": []})
+
+    convos = []
+    for f in history_dir.glob("*.json"):
+        try:
+            data = json.loads(f.read_text())
+            updated = data.get("updated", data.get("created", ""))
+
+            # Apply time filters
+            if before and updated > before:
+                continue
+            if after and updated < after:
+                continue
+
+            convos.append({
+                "conversation_id": data.get("id", f.stem),
+                "title": data.get("title", "Untitled"),
+                "created": data.get("created", ""),
+                "updated": updated,
+                "message_count": len(data.get("messages", [])),
+                "skill": data.get("skill"),
+            })
+        except (json.JSONDecodeError, Exception):
+            continue
+
+    reverse = sort_order != "oldest"
+    convos.sort(key=lambda c: c["updated"], reverse=reverse)
+
+    return json.dumps({"conversations": convos[:count]})

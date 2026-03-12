@@ -2,7 +2,7 @@ import json
 import logging
 from tools.search import _tool_web_search, _tool_web_fetch
 from tools.context import _tool_calculator, _tool_user_time
-from tools.memory import _tool_memory_edit
+from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
 
 log = logging.getLogger("piailot")
 
@@ -82,6 +82,38 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "conversation_search": {
+        "type": "function",
+        "function": {
+            "name": "conversation_search",
+            "description": "Search the user's past conversations by keyword. Returns matching conversation titles and message snippets.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search keywords"},
+                    "max_results": {"type": "integer", "description": "Maximum results (1-10, default 5)"}
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    "recent_chats": {
+        "type": "function",
+        "function": {
+            "name": "recent_chats",
+            "description": "List the user's recent conversations. Returns titles, timestamps, and message counts.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "count": {"type": "integer", "description": "Number of conversations (1-20, default 5)"},
+                    "sort": {"type": "string", "description": "'newest' (default) or 'oldest'", "enum": ["newest", "oldest"]},
+                    "before": {"type": "string", "description": "ISO 8601 datetime — only conversations before this time"},
+                    "after": {"type": "string", "description": "ISO 8601 datetime — only conversations after this time"}
+                },
+                "required": [],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -89,7 +121,7 @@ TOOL_DEFINITIONS["datetime"] = TOOL_DEFINITIONS["user_time"]
 
 # ── Always-on tools (injected into every request) ──
 
-ALWAYS_ON_TOOLS = ["user_time", "memory_edit"]
+ALWAYS_ON_TOOLS = ["user_time", "memory_edit", "conversation_search", "recent_chats"]
 
 # ── Tool executor ──
 
@@ -113,6 +145,14 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
             from auth import get_user_dir
             user_dir = str(get_user_dir(context["username"])) if context else ""
             return _tool_memory_edit(arguments, user_dir)
+        elif name == "conversation_search":
+            from auth import get_user_dir
+            user_dir = str(get_user_dir(context["username"])) if context else ""
+            return _tool_conversation_search(arguments, user_dir)
+        elif name == "recent_chats":
+            from auth import get_user_dir
+            user_dir = str(get_user_dir(context["username"])) if context else ""
+            return _tool_recent_chats(arguments, user_dir)
         else:
             return f"Unknown tool: {name}"
     except Exception as e:
