@@ -3,6 +3,7 @@ import logging
 from tools.search import _tool_web_search, _tool_web_fetch, _tool_image_search
 from tools.context import _tool_calculator, _tool_user_time
 from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
+from tools.data import _tool_weather
 
 log = logging.getLogger("piailot")
 
@@ -129,6 +130,20 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "weather": {
+        "type": "function",
+        "function": {
+            "name": "weather",
+            "description": "Get current weather and 5-day forecast for a location. Returns temperature, conditions, humidity, wind, and daily forecast.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "City name (e.g. 'London') or coordinates (e.g. '51.5,-0.1')"}
+                },
+                "required": ["location"],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -170,6 +185,8 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
             return _tool_recent_chats(arguments, user_dir)
         elif name == "image_search":
             return await _tool_image_search(arguments.get("query", ""), arguments.get("max_results", 3))
+        elif name == "weather":
+            return await _tool_weather(arguments.get("location", ""))
         else:
             return f"Unknown tool: {name}"
     except Exception as e:
