@@ -760,6 +760,7 @@
     else if (type === 'weather') renderWeather(el, d);
     else if (type === 'places') renderPlaces(el, d);
     else if (type === 'sports') renderSports(el, d);
+    else if (type === 'ask_input') renderAskInput(el, d);
   }
 
   function renderImages(el, d) {
@@ -863,6 +864,159 @@
     }
     html += '</div>';
     el.innerHTML = html;
+  }
+
+  function renderAskInput(el, d) {
+    if (!d.questions || !d.questions.length) return;
+
+    var currentQ = 0;
+    var answers = [];
+
+    function showQuestion(idx) {
+      var q = d.questions[idx];
+      var html = '<div class="widget-header">' + escText(q.question);
+      if (d.questions.length > 1) html += ' <span style="color:var(--text-dim)">(' + (idx+1) + ' of ' + d.questions.length + ')</span>';
+      html += '</div><div class="widget-body">';
+
+      if (q.type === 'single_select') {
+        q.options.forEach(function(opt, i) {
+          html += '<button class="ask-option" data-idx="' + i + '" style="display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;margin-bottom:6px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.9em;transition:all 0.15s">' + escText(opt) + '</button>';
+        });
+      } else if (q.type === 'multi_select') {
+        q.options.forEach(function(opt, i) {
+          html += '<label style="display:flex;align-items:center;gap:10px;padding:8px 14px;margin-bottom:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:0.9em;transition:all 0.15s">';
+          html += '<input type="checkbox" data-idx="' + i + '" style="accent-color:var(--green)">';
+          html += '<span>' + escText(opt) + '</span></label>';
+        });
+        html += '<div style="margin-top:10px;display:flex;gap:8px"><button class="ask-submit" style="background:var(--green-dim);color:var(--bg);border:none;padding:8px 16px;border-radius:4px;font-family:inherit;font-weight:700;cursor:pointer">Submit</button>';
+        html += '<span class="ask-counter" style="color:var(--text-dim);font-size:0.8em;line-height:36px">0 selected</span></div>';
+      } else if (q.type === 'rank_priorities') {
+        html += '<div class="rank-list" style="list-style:none">';
+        q.options.forEach(function(opt, i) {
+          html += '<div class="rank-item" draggable="true" data-idx="' + i + '" style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:grab;font-size:0.9em">';
+          html += '<span style="color:var(--text-dim);cursor:grab">⠿</span>';
+          html += '<span class="rank-num" style="color:var(--amber);font-weight:700;min-width:20px">' + (i+1) + '.</span>';
+          html += '<span>' + escText(opt) + '</span></div>';
+        });
+        html += '</div>';
+        html += '<button class="ask-submit" style="margin-top:10px;background:var(--green-dim);color:var(--bg);border:none;padding:8px 16px;border-radius:4px;font-family:inherit;font-weight:700;cursor:pointer">Submit ranking</button>';
+      }
+
+      html += '<button class="ask-skip" style="margin-top:8px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-family:inherit;font-size:0.8em;padding:4px 0">Skip</button>';
+      html += '</div>';
+      el.innerHTML = html;
+
+      // Wire up events
+      if (q.type === 'single_select') {
+        el.querySelectorAll('.ask-option').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            answers.push({question: q.question, type: q.type, answer: q.options[parseInt(btn.dataset.idx)]});
+            nextQuestion();
+          });
+          btn.addEventListener('mouseenter', function() { btn.style.borderColor = 'var(--green-dim)'; btn.style.color = 'var(--green)'; });
+          btn.addEventListener('mouseleave', function() { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text)'; });
+        });
+      } else if (q.type === 'multi_select') {
+        var counter = el.querySelector('.ask-counter');
+        el.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+          cb.addEventListener('change', function() {
+            var count = el.querySelectorAll('input:checked').length;
+            counter.textContent = count + ' selected';
+          });
+        });
+        el.querySelector('.ask-submit').addEventListener('click', function() {
+          var selected = [];
+          el.querySelectorAll('input:checked').forEach(function(cb) {
+            selected.push(q.options[parseInt(cb.dataset.idx)]);
+          });
+          answers.push({question: q.question, type: q.type, answer: selected});
+          nextQuestion();
+        });
+      } else if (q.type === 'rank_priorities') {
+        setupDragReorder(el.querySelector('.rank-list'));
+        el.querySelector('.ask-submit').addEventListener('click', function() {
+          var ranked = [];
+          el.querySelectorAll('.rank-item').forEach(function(item) {
+            ranked.push(q.options[parseInt(item.dataset.idx)]);
+          });
+          answers.push({question: q.question, type: q.type, ranked: ranked});
+          nextQuestion();
+        });
+      }
+
+      el.querySelector('.ask-skip').addEventListener('click', function() {
+        answers.push({question: q.question, type: q.type, answer: 'skipped'});
+        nextQuestion();
+      });
+
+      // Keyboard navigation
+      var focusIdx = -1;
+      var optionEls = el.querySelectorAll('.ask-option, label, .rank-item');
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          el.querySelector('.ask-skip').click();
+          return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (e.key === 'ArrowDown') focusIdx = Math.min(focusIdx + 1, optionEls.length - 1);
+          else focusIdx = Math.max(focusIdx - 1, 0);
+          optionEls[focusIdx].focus();
+          optionEls[focusIdx].style.outline = '2px solid var(--green-dim)';
+          optionEls.forEach(function(o, i) { if (i !== focusIdx) o.style.outline = ''; });
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (q.type === 'single_select' && focusIdx >= 0) optionEls[focusIdx].click();
+          else { var sub = el.querySelector('.ask-submit'); if (sub) sub.click(); }
+        }
+      });
+      el.setAttribute('tabindex', '0');
+      el.focus();
+    }
+
+    function nextQuestion() {
+      currentQ++;
+      if (currentQ < d.questions.length) {
+        showQuestion(currentQ);
+      } else {
+        // Send answers as user message (per spec format)
+        var parts = answers.map(function(a) {
+          if (a.type === 'rank_priorities' && a.ranked) return '[User ranked: ' + a.ranked.map(function(r,i) { return (i+1) + '. ' + r; }).join(', ') + ']';
+          if (a.type === 'multi_select' && Array.isArray(a.answer)) return '[User selected: ' + a.answer.join(', ') + ']';
+          return '[User selected: ' + a.answer + ']';
+        });
+        el.innerHTML = '<div class="widget-body" style="color:var(--text-dim)">Responses submitted</div>';
+        // Auto-send
+        inputEl.value = parts.join(' ');
+        send();
+      }
+    }
+
+    function setupDragReorder(list) {
+      var dragItem = null;
+      list.querySelectorAll('.rank-item').forEach(function(item) {
+        item.addEventListener('dragstart', function(e) { dragItem = item; item.style.opacity = '0.5'; });
+        item.addEventListener('dragend', function() { dragItem.style.opacity = '1'; dragItem = null; updateNumbers(list); });
+        item.addEventListener('dragover', function(e) { e.preventDefault(); });
+        item.addEventListener('drop', function(e) {
+          e.preventDefault();
+          if (dragItem && dragItem !== item) {
+            var items = Array.from(list.children);
+            var dragIdx = items.indexOf(dragItem);
+            var dropIdx = items.indexOf(item);
+            if (dragIdx < dropIdx) list.insertBefore(dragItem, item.nextSibling);
+            else list.insertBefore(dragItem, item);
+          }
+        });
+      });
+    }
+
+    function updateNumbers(list) {
+      list.querySelectorAll('.rank-num').forEach(function(num, i) { num.textContent = (i+1) + '.'; });
+    }
+
+    showQuestion(0);
   }
 
   // Helpers

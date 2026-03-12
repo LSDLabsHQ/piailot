@@ -4,6 +4,7 @@ from tools.search import _tool_web_search, _tool_web_fetch, _tool_image_search
 from tools.context import _tool_calculator, _tool_user_time
 from tools.memory import _tool_memory_edit, _tool_conversation_search, _tool_recent_chats
 from tools.data import _tool_weather, _tool_places_search, _tool_sports_data
+from tools.widgets import _tool_ask_user_input
 
 log = logging.getLogger("piailot")
 
@@ -177,6 +178,31 @@ TOOL_DEFINITIONS = {
             },
         },
     },
+    "ask_user_input": {
+        "type": "function",
+        "function": {
+            "name": "ask_user_input",
+            "description": "Present interactive choice widgets to the user. Supports single select (radio), multi select (checkboxes), and rank priorities (drag to reorder).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "questions": {
+                        "type": "array",
+                        "description": "1-3 question objects, each with: question (string), type ('single_select'|'multi_select'|'rank_priorities'), options (2-6 strings)",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "question": {"type": "string"},
+                                "type": {"type": "string", "enum": ["single_select", "multi_select", "rank_priorities"]},
+                                "options": {"type": "array", "items": {"type": "string"}}
+                            }
+                        }
+                    }
+                },
+                "required": ["questions"],
+            },
+        },
+    },
 }
 
 # Backwards compat: "datetime" aliases "user_time" so existing skills don't break
@@ -233,6 +259,8 @@ async def execute_tool(name: str, arguments: dict, context: dict = None) -> str:
                 arguments.get("league", ""),
                 arguments.get("team"),
             )
+        elif name == "ask_user_input":
+            return _tool_ask_user_input(arguments)
         else:
             return f"Unknown tool: {name}"
     except Exception as e:
