@@ -216,6 +216,77 @@
     select { max-width: 120px; font-size: 0.72em; }
     .msg { max-width: 95%; }
   }
+
+  /* ── Widgets ── */
+  .piailot-widget {
+    align-self: flex-start; max-width: 85%; margin: 4px 0;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); overflow: hidden; font-size: 0.82em;
+  }
+  .widget-header {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    color: var(--amber); font-weight: 700; font-size: 0.9em;
+  }
+  .widget-body { padding: 12px 14px; }
+
+  /* Image search */
+  .image-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  .image-grid a { display: block; }
+  .image-grid img {
+    width: 100%; height: 90px; object-fit: cover;
+    border-radius: 4px; border: 1px solid var(--border);
+    transition: border-color 0.2s;
+  }
+  .image-grid img:hover { border-color: var(--cyan); }
+  .image-grid .img-title {
+    font-size: 0.75em; color: var(--text-dim); margin-top: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Weather */
+  .weather-current {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 12px;
+  }
+  .weather-temp { font-size: 2em; color: var(--green); font-weight: 700; }
+  .weather-details { color: var(--text-dim); font-size: 0.9em; line-height: 1.6; }
+  .weather-forecast {
+    display: flex; gap: 8px; overflow-x: auto; padding: 4px 0;
+  }
+  .forecast-day {
+    flex: 0 0 auto; text-align: center; padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    min-width: 80px;
+  }
+  .forecast-day .day-name { color: var(--text-dim); font-size: 0.8em; margin-bottom: 4px; }
+  .forecast-day .day-temp { color: var(--green); font-weight: 700; }
+  .forecast-day .day-cond { color: var(--text-dim); font-size: 0.75em; margin-top: 4px; }
+
+  /* Places */
+  .places-list { margin-bottom: 12px; }
+  .place-item {
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: start;
+  }
+  .place-item:last-child { border-bottom: none; }
+  .place-name { color: var(--cyan); font-weight: 700; }
+  .place-address { color: var(--text-dim); font-size: 0.85em; margin-top: 2px; }
+  .place-rating { color: var(--amber); white-space: nowrap; }
+  .places-map { height: 250px; border-radius: 4px; margin-top: 8px; }
+
+  /* Sports */
+  .sports-table { width: 100%; border-collapse: collapse; }
+  .sports-table th {
+    text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border);
+    color: var(--amber); font-size: 0.8em; text-transform: uppercase;
+  }
+  .sports-table td {
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+    color: var(--text); font-size: 0.85em;
+  }
+  .sports-table tr:last-child td { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -591,7 +662,7 @@
               widgetDiv.className = 'piailot-widget piailot-widget-' + json.__piailot_widget__;
               widgetDiv.dataset.widget = JSON.stringify(json);
               chatEl.insertBefore(widgetDiv, assistantDiv);
-              // Widget rendering will be added in Phase 2/3
+              renderWidget(widgetDiv);
               continue;
             }
             var delta = '';
@@ -643,6 +714,160 @@
 
   // Theme picker
   piailotThemes.picker(document.getElementById('theme-mount'));
+
+  // ── Widget Renderers ──
+
+  var _leafletLoaded = false;
+  var _leafletCallbacks = [];
+
+  function loadLeaflet(cb) {
+    if (_leafletLoaded) { cb(); return; }
+    _leafletCallbacks.push(cb);
+    if (_leafletCallbacks.length > 1) return;
+
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+
+    var script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = function() {
+      _leafletLoaded = true;
+      _leafletCallbacks.forEach(function(c) { c(); });
+      _leafletCallbacks = [];
+    };
+    script.onerror = function() {
+      _leafletCallbacks.forEach(function(c) { c(true); });
+      _leafletCallbacks = [];
+    };
+    var timeout = setTimeout(function() {
+      if (!_leafletLoaded) {
+        script.onerror();
+      }
+    }, 10000);
+    script.addEventListener('load', function() { clearTimeout(timeout); });
+    document.head.appendChild(script);
+  }
+
+  function renderWidget(el) {
+    var data;
+    try { data = JSON.parse(el.dataset.widget); } catch(e) { return; }
+    var type = data.__piailot_widget__;
+    var d = data.data;
+
+    if (type === 'images') renderImages(el, d);
+    else if (type === 'weather') renderWeather(el, d);
+    else if (type === 'places') renderPlaces(el, d);
+    else if (type === 'sports') renderSports(el, d);
+  }
+
+  function renderImages(el, d) {
+    if (d.error || !d.images || !d.images.length) {
+      el.innerHTML = '<div class="widget-body" style="color:var(--text-dim)">No images found</div>';
+      return;
+    }
+    var html = '<div class="widget-header">Images: ' + escText(d.query) + '</div><div class="widget-body"><div class="image-grid">';
+    d.images.forEach(function(img) {
+      html += '<a href="' + escAttr(img.url) + '" target="_blank" rel="noopener">' +
+        '<img src="' + escAttr(img.thumbnail_url || img.url) + '" alt="' + escAttr(img.title) + '" loading="lazy">' +
+        '<div class="img-title">' + escText(img.title) + '</div></a>';
+    });
+    html += '</div></div>';
+    el.innerHTML = html;
+  }
+
+  function renderWeather(el, d) {
+    if (d.error) {
+      el.innerHTML = '<div class="widget-body" style="color:var(--red)">' + escText(d.error) + '</div>';
+      return;
+    }
+    var c = d.current;
+    var html = '<div class="widget-header">' + escText(d.location_name) + '</div><div class="widget-body">';
+    html += '<div class="weather-current">';
+    html += '<div class="weather-temp">' + c.temp_c + '°C</div>';
+    html += '<div class="weather-details">' + escText(c.conditions) + '<br>Humidity: ' + c.humidity + '%<br>Wind: ' + c.wind_speed + ' km/h</div>';
+    html += '</div>';
+
+    if (d.forecast && d.forecast.length) {
+      html += '<div class="weather-forecast">';
+      d.forecast.forEach(function(day) {
+        var dayName = new Date(day.date + 'T00:00:00').toLocaleDateString('en', {weekday: 'short'});
+        html += '<div class="forecast-day"><div class="day-name">' + dayName + '</div>';
+        html += '<div class="day-temp">' + day.high_c + '°</div>';
+        html += '<div class="day-cond">' + escText(day.conditions) + '</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  function renderPlaces(el, d) {
+    if (!d.places || !d.places.length) {
+      el.innerHTML = '<div class="widget-body" style="color:var(--text-dim)">No places found</div>';
+      return;
+    }
+    var html = '<div class="widget-header">Places: ' + escText(d.query) + '</div><div class="widget-body">';
+    html += '<div class="places-list">';
+    d.places.forEach(function(p) {
+      html += '<div class="place-item"><div><div class="place-name">' + escText(p.name) + '</div>';
+      html += '<div class="place-address">' + escText(p.address) + '</div></div>';
+      if (p.rating) html += '<div class="place-rating">' + p.rating + ' ★</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div id="map-' + Date.now() + '" class="places-map"></div>';
+    html += '</div>';
+    el.innerHTML = html;
+
+    var mapEl = el.querySelector('.places-map');
+    loadLeaflet(function(err) {
+      if (err || !window.L) {
+        mapEl.style.display = 'none';
+        return;
+      }
+      var map = L.map(mapEl).setView([d.places[0].latitude, d.places[0].longitude], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+      d.places.forEach(function(p) {
+        L.marker([p.latitude, p.longitude]).addTo(map).bindPopup('<b>' + escText(p.name) + '</b><br>' + escText(p.address));
+      });
+      if (d.places.length > 1) {
+        var bounds = d.places.map(function(p) { return [p.latitude, p.longitude]; });
+        map.fitBounds(bounds, {padding: [20, 20]});
+      }
+    });
+  }
+
+  function renderSports(el, d) {
+    if (d.error) {
+      el.innerHTML = '<div class="widget-body" style="color:var(--red)">' + escText(d.error) + '</div>';
+      return;
+    }
+    var html = '<div class="widget-header">' + escText(d.league || 'Sports') + ' ' + escText(d.type || '') + '</div><div class="widget-body">';
+
+    if (d.standings) {
+      html += '<table class="sports-table"><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr>';
+      d.standings.forEach(function(s) {
+        html += '<tr><td>' + (s.rank||'') + '</td><td>' + escText(s.team||'') + '</td><td>' + (s.played||'') + '</td><td>' + (s.wins||'') + '</td><td>' + (s.draws||'') + '</td><td>' + (s.losses||'') + '</td><td style="color:var(--green);font-weight:700">' + (s.points||'') + '</td></tr>';
+      });
+      html += '</table>';
+    } else if (d.scores) {
+      html += '<table class="sports-table"><tr><th>Date</th><th>Match</th><th>Score</th></tr>';
+      d.scores.forEach(function(s) {
+        html += '<tr><td>' + escText(s.date||'') + '</td><td>' + escText(s.home||'') + ' vs ' + escText(s.away||'') + '</td><td style="color:var(--green)">' + (s.home_score||'-') + ' - ' + (s.away_score||'-') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  // Helpers
+  function escText(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
   // Init
   async function init() {

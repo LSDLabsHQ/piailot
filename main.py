@@ -287,6 +287,15 @@ async def chat(request: Request):
                             fn_args = {}
                         tool_result = await execute_tool(fn_name, fn_args, context=tool_context)
                         log.info(f"Tool {fn_name} result: {tool_result[:200]}")
+
+                        # Emit widget events to frontend
+                        try:
+                            result_json = json.loads(tool_result)
+                            if isinstance(result_json, dict) and "__piailot_widget__" in result_json:
+                                yield f"data: {tool_result}\n\n"
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+
                         loop_messages.append({
                             "role": "tool",
                             "tool_call_id": tc["id"],
