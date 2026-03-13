@@ -708,6 +708,15 @@
               renderWidget(widgetDiv);
               continue;
             }
+            // Tool activity indicator
+            if (json.choices && json.choices[0] && json.choices[0].tool_activity) {
+              var toolName = json.choices[0].tool_activity;
+              statusEl.textContent = 'using ' + toolName + '...';
+              assistantDiv.textContent = 'using ' + toolName + '...';
+              assistantDiv.classList.add('streaming');
+              chatEl.scrollTop = chatEl.scrollHeight;
+              continue;
+            }
             var delta = '';
             if (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) {
               delta = json.choices[0].delta.content;

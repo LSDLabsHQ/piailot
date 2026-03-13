@@ -323,22 +323,26 @@ async def chat(request: Request):
                                 }
 
                     if not tool_calls:
-                        # No more tool calls — emit the final text
+                        # No more tool calls — stream the final text response
                         content = message.get("content") or ""
-                        if not content:
-                            # Model returned no content — retry without tools to get text
-                            log.info("Empty content after tool calls, retrying without tools for summary")
-                            summary_data = await _call_openrouter(
-                                client, headers, used_model, loop_messages
-                            )
-                            if summary_data:
-                                content = summary_data.get("choices", [{}])[0].get("message", {}).get("content") or ""
                         if content:
+                            # We already have content from the non-streaming call, emit it
                             chunk = {"choices": [{"delta": {"content": content}, "finish_reason": "stop"}]}
                             yield f"data: {json.dumps(chunk)}\n\n"
                         else:
-                            chunk = {"choices": [{"delta": {"content": "[no response from model]"}, "finish_reason": "stop"}]}
-                            yield f"data: {json.dumps(chunk)}\n\n"
+                            # No content — make a streaming call without tools to get text
+                            log.info("Empty content after tool calls, streaming summary")
+                            resp = await _call_openrouter_stream(
+                                client, headers, used_model, loop_messages
+                            )
+                            if resp:
+                                async for line in resp.aiter_lines():
+                                    if line.startswith("data: "):
+                                        yield line + "\n\n"
+                                await resp.aclose()
+                            else:
+                                chunk = {"choices": [{"delta": {"content": "[no response from model]"}, "finish_reason": "stop"}]}
+                                yield f"data: {json.dumps(chunk)}\n\n"
                         yield "data: [DONE]\n\n"
                         return
 
@@ -357,6 +361,11 @@ async def chat(request: Request):
                             fn_args = json.loads(tc["function"]["arguments"])
                         except (json.JSONDecodeError, TypeError):
                             fn_args = {}
+
+                        # Emit tool activity indicator so UI shows progress
+                        activity = {"choices": [{"delta": {"content": ""}, "tool_activity": fn_name}]}
+                        yield f"data: {json.dumps(activity)}\n\n"
+
                         tool_result = await execute_tool(fn_name, fn_args, context=tool_context)
                         log.info(f"Tool {fn_name} result: {tool_result[:200]}")
 
@@ -393,18 +402,19 @@ async def chat(request: Request):
                         yield "data: [DONE]\n\n"
                         return
 
-                # Exhausted tool rounds — do a final call without tools to get summary
-                log.info("Tool loop exhausted, making final text-only call")
-                final_data = await _call_openrouter(
+                # Exhausted tool rounds — stream a final call without tools
+                log.info("Tool loop exhausted, streaming final text-only call")
+                resp = await _call_openrouter_stream(
                     client, headers, used_model, loop_messages
                 )
-                content = ""
-                if final_data:
-                    content = final_data.get("choices", [{}])[0].get("message", {}).get("content") or ""
-                if not content:
-                    content = "[tool loop limit reached — please try again]"
-                chunk = {"choices": [{"delta": {"content": content}, "finish_reason": "stop"}]}
-                yield f"data: {json.dumps(chunk)}\n\n"
+                if resp:
+                    async for line in resp.aiter_lines():
+                        if line.startswith("data: "):
+                            yield line + "\n\n"
+                    await resp.aclose()
+                else:
+                    chunk = {"choices": [{"delta": {"content": "[tool loop limit reached — please try again]"}, "finish_reason": "stop"}]}
+                    yield f"data: {json.dumps(chunk)}\n\n"
                 yield "data: [DONE]\n\n"
 
         return StreamingResponse(tool_stream(), media_type="text/event-stream")
