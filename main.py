@@ -247,15 +247,8 @@ async def chat(request: Request):
     if full_system:
         messages = [{"role": "system", "content": full_system}] + messages
 
-    # Build tool definitions: always-on + skill-specific
-    tool_names = list(ALWAYS_ON_TOOLS)
-    for t in skill_tool_names:
-        # Backwards compat: datetime -> user_time
-        mapped = "user_time" if t == "datetime" else t
-        if mapped not in tool_names:
-            tool_names.append(mapped)
-
-    tools_for_request = [TOOL_DEFINITIONS[t] for t in tool_names if t in TOOL_DEFINITIONS]
+    # All tools available in every conversation (skip datetime alias to avoid duplicates)
+    tools_for_request = [defn for name, defn in TOOL_DEFINITIONS.items() if name != "datetime"]
 
     # Build context for tool execution
     tool_context = {"username": username}
