@@ -7,7 +7,8 @@
 <script src="/themes.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  a, button, [onclick], .convo-item { touch-action: manipulation; }
   :root {
     --bg: #0a0a0a; --surface: #111111; --border: #1a1a1a;
     --green: #00ff41; --green-dim: #00aa2a; --green-glow: rgba(0,255,65,0.15);
@@ -152,12 +153,12 @@
   }
   .msg.assistant.streaming { border-left-color: var(--amber); }
   .msg-copy {
-    display: block; margin-top: 8px;
-    background: none; border: 1px solid var(--border);
-    color: var(--text-dim); font-family: inherit; font-size: 0.7em;
-    padding: 3px 10px; border-radius: 3px; cursor: pointer;
+    display: block; margin-top: 8px; margin-left: auto;
+    background: var(--surface); border: 1px solid var(--green-dim);
+    color: var(--green); font-family: inherit; font-size: 0.75em;
+    padding: 4px 14px; border-radius: 4px; cursor: pointer;
   }
-  .msg-copy:hover { color: var(--green); border-color: var(--green-dim); }
+  .msg-copy:hover { background: var(--green-dim); color: var(--bg); }
   .msg.error { color: var(--red); border-left-color: var(--red); }
 
   .tool-label {
