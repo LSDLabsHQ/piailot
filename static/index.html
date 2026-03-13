@@ -151,6 +151,16 @@
     white-space: pre-wrap; word-break: break-word;
   }
   .msg.assistant.streaming { border-left-color: var(--amber); }
+  .msg.assistant { position: relative; }
+  .msg-copy {
+    position: absolute; top: 6px; right: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim); font-family: inherit; font-size: 0.7em;
+    padding: 2px 8px; border-radius: 3px; cursor: pointer;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .msg.assistant:hover .msg-copy { opacity: 1; }
+  .msg-copy:hover { color: var(--green); border-color: var(--green-dim); }
   .msg.error { color: var(--red); border-left-color: var(--red); }
 
   .tool-label {
@@ -574,6 +584,18 @@
         var div = document.createElement('div');
         div.className = 'msg ' + m.role;
         div.textContent = text;
+        if (m.role === 'assistant' && text) {
+          var cb = document.createElement('button');
+          cb.className = 'msg-copy';
+          cb.textContent = 'copy';
+          cb.addEventListener('click', function() {
+            navigator.clipboard.writeText(text).then(function() {
+              cb.textContent = 'copied!';
+              setTimeout(function() { cb.textContent = 'copy'; }, 1500);
+            });
+          });
+          div.appendChild(cb);
+        }
         chatEl.appendChild(div);
       }
     });
@@ -750,6 +772,19 @@
     }
 
     assistantDiv.classList.remove('streaming', 'cursor-blink');
+    // Add copy button to completed assistant messages
+    if (assistantDiv.textContent && !assistantDiv.classList.contains('error')) {
+      var copyBtn = document.createElement('button');
+      copyBtn.className = 'msg-copy';
+      copyBtn.textContent = 'copy';
+      copyBtn.addEventListener('click', function() {
+        navigator.clipboard.writeText(assistantDiv.textContent.replace(/^copy/, '').trim()).then(function() {
+          copyBtn.textContent = 'copied!';
+          setTimeout(function() { copyBtn.textContent = 'copy'; }, 1500);
+        });
+      });
+      assistantDiv.appendChild(copyBtn);
+    }
     streaming = false;
     sendBtn.disabled = false;
     inputEl.focus();
