@@ -151,6 +151,8 @@
     background: var(--green-glow); border-radius: 2px 8px 8px 8px;
     white-space: pre-wrap; word-break: break-word;
   }
+  .msg.assistant img { max-width: 100%; border-radius: 4px; margin: 4px 0; max-height: 200px; }
+  .msg.assistant a { color: var(--cyan); }
   .msg.assistant.streaming { border-left-color: var(--amber); }
   .msg-copy {
     display: block; margin-top: 8px; margin-left: auto;
@@ -584,17 +586,18 @@
         }
         var div = document.createElement('div');
         div.className = 'msg ' + m.role;
-        div.textContent = text;
+        if (m.role === 'assistant') {
+          div.innerHTML = renderMarkdown(text);
+        } else {
+          div.textContent = text;
+        }
         if (m.role === 'assistant' && text) {
           var cb = document.createElement('button');
           cb.className = 'msg-copy';
           cb.textContent = 'copy';
-          cb.addEventListener('click', function() {
-            navigator.clipboard.writeText(text).then(function() {
-              cb.textContent = 'copied!';
-              setTimeout(function() { cb.textContent = 'copy'; }, 1500);
-            });
-          });
+          (function(t) {
+            cb.addEventListener('click', function() { copyToClipboard(t, cb); });
+          })(text);
           div.appendChild(cb);
         }
         chatEl.appendChild(div);
@@ -756,7 +759,7 @@
 
             var displayText = full;
             if (tm) displayText = full.slice(tm[0].length);
-            assistantDiv.textContent = displayText;
+            assistantDiv.innerHTML = renderMarkdown(displayText);
             chatEl.scrollTop = chatEl.scrollHeight;
           } catch (pe) { /* ignore parse errors */ }
         }
@@ -774,16 +777,16 @@
 
     assistantDiv.classList.remove('streaming', 'cursor-blink');
     // Add copy button to completed assistant messages
-    if (assistantDiv.textContent && !assistantDiv.classList.contains('error')) {
+    if (assistantDiv.innerText && !assistantDiv.classList.contains('error')) {
       var copyBtn = document.createElement('button');
       copyBtn.className = 'msg-copy';
       copyBtn.textContent = 'copy';
-      copyBtn.addEventListener('click', function() {
-        navigator.clipboard.writeText(assistantDiv.textContent.replace(/^copy/, '').trim()).then(function() {
-          copyBtn.textContent = 'copied!';
-          setTimeout(function() { copyBtn.textContent = 'copy'; }, 1500);
-        });
-      });
+      var rawText = full;
+      var tm2 = full.match(/^\[using ([^\]]+)\]\s*/);
+      if (tm2) rawText = full.slice(tm2[0].length);
+      (function(t) {
+        copyBtn.addEventListener('click', function() { copyToClipboard(t, copyBtn); });
+      })(rawText);
       assistantDiv.appendChild(copyBtn);
     }
     streaming = false;
@@ -1139,12 +1142,9 @@
       });
 
       // Copy
-      el.querySelector('.compose-copy').addEventListener('click', function() {
-        navigator.clipboard.writeText(v.body).then(function() {
-          var copyBtn = el.querySelector('.compose-copy');
-          if (copyBtn) copyBtn.textContent = 'Copied!';
-          setTimeout(function() { var btn = el.querySelector('.compose-copy'); if (btn) btn.textContent = 'Copy'; }, 1500);
-        });
+      var compCopyBtn = el.querySelector('.compose-copy');
+      compCopyBtn.addEventListener('click', function() {
+        copyToClipboard(v.body, compCopyBtn);
       });
     }
     show(0);
@@ -1241,6 +1241,44 @@
   // Helpers
   function escText(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
   function escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // Render basic markdown: bold, italic, links, images, inline code
+  function renderMarkdown(text) {
+    var h = escText(text);
+    // Images: ![alt](url)
+    h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:4px;margin:4px 0;max-height:200px;">');
+    // Links: [text](url)
+    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:var(--cyan)">$1</a>');
+    // Bold: **text**
+    h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Italic: *text*
+    h = h.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    // Inline code: `text`
+    h = h.replace(/`([^`]+)`/g, '<code style="background:var(--surface);padding:1px 4px;border-radius:2px;font-size:0.9em">$1</code>');
+    return h;
+  }
+
+  // Clipboard copy that works on HTTP (fallback for non-HTTPS)
+  function copyToClipboard(text, btn) {
+    function onSuccess() {
+      btn.textContent = 'copied!';
+      setTimeout(function() { btn.textContent = 'copy'; }, 1500);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(onSuccess);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      onSuccess();
+    }
+  }
 
   // Init
   async function init() {
