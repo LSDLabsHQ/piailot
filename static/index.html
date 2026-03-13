@@ -151,15 +151,12 @@
     white-space: pre-wrap; word-break: break-word;
   }
   .msg.assistant.streaming { border-left-color: var(--amber); }
-  .msg.assistant { position: relative; }
   .msg-copy {
-    position: absolute; top: 6px; right: 6px;
-    background: var(--surface); border: 1px solid var(--border);
+    display: block; margin-top: 8px;
+    background: none; border: 1px solid var(--border);
     color: var(--text-dim); font-family: inherit; font-size: 0.7em;
-    padding: 2px 8px; border-radius: 3px; cursor: pointer;
-    opacity: 0; transition: opacity 0.15s;
+    padding: 3px 10px; border-radius: 3px; cursor: pointer;
   }
-  .msg.assistant:hover .msg-copy { opacity: 1; }
   .msg-copy:hover { color: var(--green); border-color: var(--green-dim); }
   .msg.error { color: var(--red); border-left-color: var(--red); }
 
