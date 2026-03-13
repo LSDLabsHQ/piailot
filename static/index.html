@@ -534,9 +534,17 @@
       item.addEventListener('click', (function(convId) {
         return function() { openConversation(convId); };
       })(c.id));
-      item.addEventListener('touchend', (function(convId) {
-        return function(e) { e.preventDefault(); openConversation(convId); };
-      })(c.id));
+      // Tap detection: only fire if finger didn't move (not a scroll)
+      (function(el, convId) {
+        var startY = 0;
+        el.addEventListener('touchstart', function(e) { startY = e.touches[0].clientY; }, {passive: true});
+        el.addEventListener('touchend', function(e) {
+          if (Math.abs(e.changedTouches[0].clientY - startY) < 10) {
+            e.preventDefault();
+            openConversation(convId);
+          }
+        });
+      })(item, c.id);
       convoList.appendChild(item);
     });
   }
