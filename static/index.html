@@ -77,7 +77,7 @@
     font-size: 0.78em; color: var(--text-dim); margin-bottom: 2px;
     transition: background 0.15s;
   }
-  .convo-item:hover { background: rgba(255,255,255,0.03); color: var(--text); }
+  @media (hover: hover) { .convo-item:hover { background: rgba(255,255,255,0.03); color: var(--text); } }
   .convo-item.active { background: var(--green-glow); color: var(--green); }
   .convo-item .convo-title {
     flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -531,6 +531,9 @@
       item.appendChild(del);
       item.addEventListener('click', (function(convId) {
         return function() { openConversation(convId); };
+      })(c.id));
+      item.addEventListener('touchend', (function(convId) {
+        return function(e) { e.preventDefault(); openConversation(convId); };
       })(c.id));
       convoList.appendChild(item);
     });
