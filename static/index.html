@@ -190,6 +190,7 @@
   #input-bar {
     padding: 12px 16px; border-top: 1px solid var(--border);
     display: flex; gap: 8px; flex-shrink: 0; background: var(--surface);
+    align-items: flex-end;
   }
   #prompt-label { color: var(--green-dim); line-height: 36px; font-size: 0.9em; }
   #input {
@@ -803,6 +804,7 @@
   }
 
   sendBtn.addEventListener('click', send);
+  sendBtn.addEventListener('touchend', function(e) { e.preventDefault(); send(); });
   inputEl.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
