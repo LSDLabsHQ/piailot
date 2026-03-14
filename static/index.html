@@ -218,20 +218,29 @@
 
   /* ── Mobile responsive ── */
   @media (max-width: 767px) {
+    body { font-size: 15px; }
     #sidebar {
       position: fixed; left: 0; top: 0; height: 100dvh;
       transform: translateX(-100%);
     }
     #sidebar.open { transform: translateX(0); }
     #sidebar-overlay.open { display: block; }
-    #hamburger { display: block; }
+    #hamburger { display: block; font-size: 1.4em; padding: 6px 10px; }
     #topbar { padding: 8px 10px; gap: 6px; flex-wrap: nowrap; overflow: hidden; }
-    #topbar .logo { font-size: 0.88em; white-space: nowrap; }
+    #topbar .logo { font-size: 0.95em; white-space: nowrap; }
     #status { display: none; }
     .picker-group { gap: 4px; flex-shrink: 1; min-width: 0; overflow: hidden; }
-    select { max-width: 90px; font-size: 0.68em; padding: 4px 4px; text-overflow: ellipsis; }
-    .msg { max-width: 95%; }
+    select { max-width: 100px; font-size: 0.8em; padding: 6px 4px; text-overflow: ellipsis; }
+    .msg { max-width: 95%; font-size: 1em; }
+    .msg-time { font-size: 0.8em; }
     .piailot-widget { max-width: 100%; }
+    .convo-title { font-size: 0.9em; }
+    .convo-del { font-size: 1.1em; padding: 6px 10px; }
+    .new-btn { font-size: 0.9em; padding: 10px 14px; }
+    #prompt-label { font-size: 1em; }
+    #msg-input { font-size: 16px; padding: 10px; }
+    #send-btn { font-size: 1em; padding: 10px 16px; }
+    .copy-btn-msg { font-size: 0.85em; padding: 6px 12px; }
   }
 
   /* ── Widgets ── */
