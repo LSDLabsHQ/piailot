@@ -87,11 +87,13 @@
   }
   .convo-item .convo-del {
     background: none; border: none; color: var(--text-dim); cursor: pointer;
-    font-size: 0.9em; font-family: inherit; padding: 0 3px; line-height: 1;
-    opacity: 0; transition: opacity 0.15s;
+    font-size: 0.9em; font-family: inherit; padding: 4px 6px; line-height: 1;
   }
-  .convo-item:hover .convo-del { opacity: 1; }
-  .convo-item .convo-del:hover { color: var(--red); }
+  @media (hover: hover) {
+    .convo-item .convo-del { opacity: 0; transition: opacity 0.15s; }
+    .convo-item:hover .convo-del { opacity: 1; }
+    .convo-item .convo-del:hover { color: var(--red); }
+  }
 
   /* ── Main panel ── */
   #main {
@@ -513,6 +515,7 @@
       del.className = 'convo-del';
       del.innerHTML = '&times;';
       del.title = 'Delete conversation';
+      del.addEventListener('touchend', function(e) { e.stopPropagation(); });
       del.addEventListener('click', (function(convId) {
         return async function(e) {
           e.stopPropagation();
