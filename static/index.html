@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>piailot:ai</title>
+<script src="/themes.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  a, button, [onclick], .convo-item { touch-action: manipulation; }
   :root {
     --bg: #0a0a0a; --surface: #111111; --border: #1a1a1a;
     --green: #00ff41; --green-dim: #00aa2a; --green-glow: rgba(0,255,65,0.15);
@@ -15,7 +17,7 @@
     --sidebar-w: 260px;
   }
   body {
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-family: var(--font, 'JetBrains Mono', 'Courier New', monospace);
     background: var(--bg); color: var(--text);
     height: 100dvh; display: flex; overflow: hidden;
   }
@@ -75,7 +77,7 @@
     font-size: 0.78em; color: var(--text-dim); margin-bottom: 2px;
     transition: background 0.15s;
   }
-  .convo-item:hover { background: rgba(255,255,255,0.03); color: var(--text); }
+  @media (hover: hover) { .convo-item:hover { background: rgba(255,255,255,0.03); color: var(--text); } }
   .convo-item.active { background: var(--green-glow); color: var(--green); }
   .convo-item .convo-title {
     flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -149,7 +151,16 @@
     background: var(--green-glow); border-radius: 2px 8px 8px 8px;
     white-space: pre-wrap; word-break: break-word;
   }
+  .msg.assistant img { max-width: 100%; border-radius: 4px; margin: 4px 0; max-height: 200px; }
+  .msg.assistant a { color: var(--cyan); }
   .msg.assistant.streaming { border-left-color: var(--amber); }
+  .msg-copy {
+    display: block; margin-top: 8px; margin-left: auto;
+    background: var(--surface); border: 1px solid var(--green-dim);
+    color: var(--green); font-family: inherit; font-size: 0.75em;
+    padding: 4px 14px; border-radius: 4px; cursor: pointer;
+  }
+  .msg-copy:hover { background: var(--green-dim); color: var(--bg); }
   .msg.error { color: var(--red); border-left-color: var(--red); }
 
   .tool-label {
@@ -179,12 +190,13 @@
   #input-bar {
     padding: 12px 16px; border-top: 1px solid var(--border);
     display: flex; gap: 8px; flex-shrink: 0; background: var(--surface);
+    align-items: flex-end;
   }
   #prompt-label { color: var(--green-dim); line-height: 36px; font-size: 0.9em; }
   #input {
     flex: 1; background: transparent; border: 1px solid var(--border);
     color: var(--text); padding: 8px 12px; border-radius: 4px;
-    font-family: inherit; font-size: 0.86em; resize: none;
+    font-family: inherit; font-size: 16px; resize: none;
     min-height: 36px; max-height: 120px;
   }
   #input:focus { outline: 1px solid var(--green-dim); }
@@ -211,10 +223,124 @@
     #sidebar.open { transform: translateX(0); }
     #sidebar-overlay.open { display: block; }
     #hamburger { display: block; }
-    .picker-group { gap: 4px; }
-    select { max-width: 120px; font-size: 0.72em; }
+    #topbar { padding: 8px 10px; gap: 6px; flex-wrap: nowrap; overflow: hidden; }
+    #topbar .logo { font-size: 0.88em; white-space: nowrap; }
+    #status { display: none; }
+    .picker-group { gap: 4px; flex-shrink: 1; min-width: 0; overflow: hidden; }
+    select { max-width: 90px; font-size: 0.68em; padding: 4px 4px; text-overflow: ellipsis; }
     .msg { max-width: 95%; }
+    .piailot-widget { max-width: 100%; }
   }
+
+  /* ── Widgets ── */
+  .piailot-widget {
+    align-self: flex-start; max-width: 85%; margin: 4px 0;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); overflow: hidden; font-size: 0.82em;
+  }
+  .widget-header {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    color: var(--amber); font-weight: 700; font-size: 0.9em;
+  }
+  .widget-body { padding: 12px 14px; }
+
+  /* Image search */
+  .image-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  .image-grid a { display: block; }
+  .image-grid img {
+    width: 100%; height: 90px; object-fit: cover;
+    border-radius: 4px; border: 1px solid var(--border);
+    transition: border-color 0.2s;
+  }
+  .image-grid img:hover { border-color: var(--cyan); }
+  .image-grid .img-title {
+    font-size: 0.75em; color: var(--text-dim); margin-top: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Weather */
+  .weather-current {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 12px;
+  }
+  .weather-temp { font-size: 2em; color: var(--green); font-weight: 700; }
+  .weather-details { color: var(--text-dim); font-size: 0.9em; line-height: 1.6; }
+  .weather-forecast {
+    display: flex; gap: 8px; overflow-x: auto; padding: 4px 0;
+  }
+  .forecast-day {
+    flex: 0 0 auto; text-align: center; padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    min-width: 80px;
+  }
+  .forecast-day .day-name { color: var(--text-dim); font-size: 0.8em; margin-bottom: 4px; }
+  .forecast-day .day-temp { color: var(--green); font-weight: 700; }
+  .forecast-day .day-cond { color: var(--text-dim); font-size: 0.75em; margin-top: 4px; }
+
+  /* Places */
+  .places-list { margin-bottom: 12px; }
+  .place-item {
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: start;
+  }
+  .place-item:last-child { border-bottom: none; }
+  .place-name { color: var(--cyan); font-weight: 700; }
+  .place-address { color: var(--text-dim); font-size: 0.85em; margin-top: 2px; }
+  .place-rating { color: var(--amber); white-space: nowrap; }
+  .places-map { height: 250px; border-radius: 4px; margin-top: 8px; }
+
+  /* Sports */
+  .sports-table { width: 100%; border-collapse: collapse; }
+  .sports-table th {
+    text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border);
+    color: var(--amber); font-size: 0.8em; text-transform: uppercase;
+  }
+  .sports-table td {
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+    color: var(--text); font-size: 0.85em;
+  }
+  .sports-table tr:last-child td { border-bottom: none; }
+
+  /* Message compose */
+  .compose-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .compose-tab {
+    padding: 8px 16px; cursor: pointer; color: var(--text-dim);
+    border-bottom: 2px solid transparent; font-size: 0.85em;
+    background: none; border-top: none; border-left: none; border-right: none;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .compose-tab:hover { color: var(--text); }
+  .compose-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+  .compose-subject {
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+    color: var(--text-dim); font-size: 0.8em;
+  }
+  .compose-body {
+    padding: 14px; white-space: pre-wrap; line-height: 1.6;
+    color: var(--text); font-size: 0.9em;
+  }
+  .compose-actions { padding: 10px 14px; display: flex; gap: 8px; border-top: 1px solid var(--border); }
+  .compose-btn {
+    background: var(--green-dim); color: var(--bg); border: none;
+    padding: 6px 14px; border-radius: 4px; font-family: inherit;
+    font-weight: 700; cursor: pointer; font-size: 0.8em;
+  }
+  .compose-btn:hover { background: var(--green); }
+  .compose-btn-outline {
+    background: none; color: var(--text-dim); border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 4px; font-family: inherit;
+    cursor: pointer; font-size: 0.8em;
+  }
+  .compose-btn-outline:hover { color: var(--text); border-color: var(--text-dim); }
+
+  /* Chart */
+  .chart-container { padding: 14px; }
+  .chart-container canvas { max-height: 300px; }
+  .chart-fallback table { width: 100%; border-collapse: collapse; }
+  .chart-fallback th, .chart-fallback td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: right; font-size: 0.82em; }
+  .chart-fallback th { text-align: left; color: var(--amber); }
 </style>
 </head>
 <body>
@@ -232,6 +358,7 @@
     <button class="new-chat-btn" id="new-chat-btn">+ New Chat</button>
     <a href="/skills.html">My Skills</a>
     <a href="/admin.html" id="admin-link" style="display:none">Admin</a>
+    <div id="theme-mount"></div>
   </div>
   <div class="sidebar-label">Conversations</div>
   <div id="convo-list"></div>
@@ -408,6 +535,17 @@
       item.addEventListener('click', (function(convId) {
         return function() { openConversation(convId); };
       })(c.id));
+      // Tap detection: only fire if finger didn't move (not a scroll)
+      (function(el, convId) {
+        var startY = 0;
+        el.addEventListener('touchstart', function(e) { startY = e.touches[0].clientY; }, {passive: true});
+        el.addEventListener('touchend', function(e) {
+          if (Math.abs(e.changedTouches[0].clientY - startY) < 10) {
+            e.preventDefault();
+            openConversation(convId);
+          }
+        });
+      })(item, c.id);
       convoList.appendChild(item);
     });
   }
@@ -457,7 +595,20 @@
         }
         var div = document.createElement('div');
         div.className = 'msg ' + m.role;
-        div.textContent = text;
+        if (m.role === 'assistant') {
+          div.innerHTML = renderMarkdown(text);
+        } else {
+          div.textContent = text;
+        }
+        if (m.role === 'assistant' && text) {
+          var cb = document.createElement('button');
+          cb.className = 'msg-copy';
+          cb.textContent = 'copy';
+          (function(t) {
+            cb.addEventListener('click', function() { copyToClipboard(t, cb); });
+          })(text);
+          div.appendChild(cb);
+        }
         chatEl.appendChild(div);
       }
     });
@@ -560,6 +711,8 @@
       var body = { messages: messages, model: modelSelect.value };
       var sk = skillSelect.value;
       if (sk) body.skill = sk;
+      // Send browser timezone
+      try { body.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(e) {}
 
       var res = await fetch('/api/chat', {
         method: 'POST',
@@ -581,6 +734,24 @@
           if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
           try {
             var json = JSON.parse(line.slice(6));
+            // Check for widget events
+            if (json.__piailot_widget__) {
+              var widgetDiv = document.createElement('div');
+              widgetDiv.className = 'piailot-widget piailot-widget-' + json.__piailot_widget__;
+              widgetDiv.dataset.widget = JSON.stringify(json);
+              chatEl.insertBefore(widgetDiv, assistantDiv);
+              renderWidget(widgetDiv);
+              continue;
+            }
+            // Tool activity indicator
+            if (json.choices && json.choices[0] && json.choices[0].tool_activity) {
+              var toolName = json.choices[0].tool_activity;
+              statusEl.textContent = 'using ' + toolName + '...';
+              assistantDiv.textContent = 'using ' + toolName + '...';
+              assistantDiv.classList.add('streaming');
+              chatEl.scrollTop = chatEl.scrollHeight;
+              continue;
+            }
             var delta = '';
             if (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) {
               delta = json.choices[0].delta.content;
@@ -597,7 +768,7 @@
 
             var displayText = full;
             if (tm) displayText = full.slice(tm[0].length);
-            assistantDiv.textContent = displayText;
+            assistantDiv.innerHTML = renderMarkdown(displayText);
             chatEl.scrollTop = chatEl.scrollHeight;
           } catch (pe) { /* ignore parse errors */ }
         }
@@ -614,11 +785,27 @@
     }
 
     assistantDiv.classList.remove('streaming', 'cursor-blink');
+    // Add copy button to completed assistant messages
+    if (assistantDiv.innerText && !assistantDiv.classList.contains('error')) {
+      var copyBtn = document.createElement('button');
+      copyBtn.className = 'msg-copy';
+      copyBtn.textContent = 'copy';
+      var rawText = full;
+      var tm2 = full.match(/^\[using ([^\]]+)\]\s*/);
+      if (tm2) rawText = full.slice(tm2[0].length);
+      (function(t) {
+        copyBtn.addEventListener('click', function() { copyToClipboard(t, copyBtn); });
+      })(rawText);
+      assistantDiv.appendChild(copyBtn);
+    }
     streaming = false;
     sendBtn.disabled = false;
     inputEl.focus();
   }
 
+  // Prevent input blur when tapping send (fixes iOS double-tap)
+  sendBtn.addEventListener('touchstart', function(e) { e.preventDefault(); }, {passive: false});
+  sendBtn.addEventListener('touchend', function(e) { e.preventDefault(); send(); });
   sendBtn.addEventListener('click', send);
   inputEl.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
@@ -627,6 +814,483 @@
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
   });
+
+  // Theme picker
+  piailotThemes.picker(document.getElementById('theme-mount'));
+
+  // ── Widget Renderers ──
+
+  var _leafletLoaded = false;
+  var _leafletCallbacks = [];
+
+  function loadLeaflet(cb) {
+    if (_leafletLoaded) { cb(); return; }
+    _leafletCallbacks.push(cb);
+    if (_leafletCallbacks.length > 1) return;
+
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+
+    var script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = function() {
+      _leafletLoaded = true;
+      _leafletCallbacks.forEach(function(c) { c(); });
+      _leafletCallbacks = [];
+    };
+    script.onerror = function() {
+      _leafletCallbacks.forEach(function(c) { c(true); });
+      _leafletCallbacks = [];
+    };
+    var timeout = setTimeout(function() {
+      if (!_leafletLoaded) {
+        script.onerror();
+      }
+    }, 10000);
+    script.addEventListener('load', function() { clearTimeout(timeout); });
+    document.head.appendChild(script);
+  }
+
+  function renderWidget(el) {
+    var data;
+    try { data = JSON.parse(el.dataset.widget); } catch(e) { return; }
+    var type = data.__piailot_widget__;
+    var d = data.data;
+
+    if (type === 'images') renderImages(el, d);
+    else if (type === 'weather') renderWeather(el, d);
+    else if (type === 'places') renderPlaces(el, d);
+    else if (type === 'sports') renderSports(el, d);
+    else if (type === 'ask_input') renderAskInput(el, d);
+    else if (type === 'message_compose') renderMessageCompose(el, d);
+    else if (type === 'chart') renderChart(el, d);
+  }
+
+  function renderImages(el, d) {
+    if (d.error || !d.images || !d.images.length) {
+      el.innerHTML = '<div class="widget-body" style="color:var(--text-dim)">No images found</div>';
+      return;
+    }
+    var html = '<div class="widget-header">Images: ' + escText(d.query) + '</div><div class="widget-body"><div class="image-grid">';
+    d.images.forEach(function(img) {
+      html += '<a href="' + escAttr(img.url) + '" target="_blank" rel="noopener">' +
+        '<img src="' + escAttr(img.thumbnail_url || img.url) + '" alt="' + escAttr(img.title) + '" loading="lazy">' +
+        '<div class="img-title">' + escText(img.title) + '</div></a>';
+    });
+    html += '</div></div>';
+    el.innerHTML = html;
+  }
+
+  function renderWeather(el, d) {
+    if (d.error) {
+      el.innerHTML = '<div class="widget-body" style="color:var(--red)">' + escText(d.error) + '</div>';
+      return;
+    }
+    var c = d.current;
+    var html = '<div class="widget-header">' + escText(d.location_name) + '</div><div class="widget-body">';
+    html += '<div class="weather-current">';
+    html += '<div class="weather-temp">' + c.temp_c + '°C</div>';
+    html += '<div class="weather-details">' + escText(c.conditions) + '<br>Humidity: ' + c.humidity + '%<br>Wind: ' + c.wind_speed + ' km/h</div>';
+    html += '</div>';
+
+    if (d.forecast && d.forecast.length) {
+      html += '<div class="weather-forecast">';
+      d.forecast.forEach(function(day) {
+        var dayName = new Date(day.date + 'T00:00:00').toLocaleDateString('en', {weekday: 'short'});
+        html += '<div class="forecast-day"><div class="day-name">' + dayName + '</div>';
+        html += '<div class="day-temp">' + day.high_c + '°</div>';
+        html += '<div class="day-cond">' + escText(day.conditions) + '</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  function renderPlaces(el, d) {
+    if (!d.places || !d.places.length) {
+      el.innerHTML = '<div class="widget-body" style="color:var(--text-dim)">No places found</div>';
+      return;
+    }
+    var html = '<div class="widget-header">Places: ' + escText(d.query) + '</div><div class="widget-body">';
+    html += '<div class="places-list">';
+    d.places.forEach(function(p) {
+      html += '<div class="place-item"><div><div class="place-name">' + escText(p.name) + '</div>';
+      html += '<div class="place-address">' + escText(p.address) + '</div></div>';
+      if (p.rating) html += '<div class="place-rating">' + p.rating + ' ★</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div id="map-' + Date.now() + '" class="places-map"></div>';
+    html += '</div>';
+    el.innerHTML = html;
+
+    var mapEl = el.querySelector('.places-map');
+    loadLeaflet(function(err) {
+      if (err || !window.L) {
+        mapEl.style.display = 'none';
+        return;
+      }
+      var map = L.map(mapEl).setView([d.places[0].latitude, d.places[0].longitude], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+      d.places.forEach(function(p) {
+        L.marker([p.latitude, p.longitude]).addTo(map).bindPopup('<b>' + escText(p.name) + '</b><br>' + escText(p.address));
+      });
+      if (d.places.length > 1) {
+        var bounds = d.places.map(function(p) { return [p.latitude, p.longitude]; });
+        map.fitBounds(bounds, {padding: [20, 20]});
+      }
+    });
+  }
+
+  function renderSports(el, d) {
+    if (d.error) {
+      el.innerHTML = '<div class="widget-body" style="color:var(--red)">' + escText(d.error) + '</div>';
+      return;
+    }
+    var html = '<div class="widget-header">' + escText(d.league || 'Sports') + ' ' + escText(d.type || '') + '</div><div class="widget-body">';
+
+    if (d.standings) {
+      html += '<table class="sports-table"><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr>';
+      d.standings.forEach(function(s) {
+        html += '<tr><td>' + (s.rank||'') + '</td><td>' + escText(s.team||'') + '</td><td>' + (s.played||'') + '</td><td>' + (s.wins||'') + '</td><td>' + (s.draws||'') + '</td><td>' + (s.losses||'') + '</td><td style="color:var(--green);font-weight:700">' + (s.points||'') + '</td></tr>';
+      });
+      html += '</table>';
+    } else if (d.scores) {
+      html += '<table class="sports-table"><tr><th>Date</th><th>Match</th><th>Score</th></tr>';
+      d.scores.forEach(function(s) {
+        html += '<tr><td>' + escText(s.date||'') + '</td><td>' + escText(s.home||'') + ' vs ' + escText(s.away||'') + '</td><td style="color:var(--green)">' + (s.home_score||'-') + ' - ' + (s.away_score||'-') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  function renderAskInput(el, d) {
+    if (!d.questions || !d.questions.length) return;
+
+    var currentQ = 0;
+    var answers = [];
+
+    function showQuestion(idx) {
+      var q = d.questions[idx];
+      var html = '<div class="widget-header">' + escText(q.question);
+      if (d.questions.length > 1) html += ' <span style="color:var(--text-dim)">(' + (idx+1) + ' of ' + d.questions.length + ')</span>';
+      html += '</div><div class="widget-body">';
+
+      if (q.type === 'single_select') {
+        q.options.forEach(function(opt, i) {
+          html += '<button class="ask-option" data-idx="' + i + '" style="display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;margin-bottom:6px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.9em;transition:all 0.15s">' + escText(opt) + '</button>';
+        });
+      } else if (q.type === 'multi_select') {
+        q.options.forEach(function(opt, i) {
+          html += '<label style="display:flex;align-items:center;gap:10px;padding:8px 14px;margin-bottom:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:0.9em;transition:all 0.15s">';
+          html += '<input type="checkbox" data-idx="' + i + '" style="accent-color:var(--green)">';
+          html += '<span>' + escText(opt) + '</span></label>';
+        });
+        html += '<div style="margin-top:10px;display:flex;gap:8px"><button class="ask-submit" style="background:var(--green-dim);color:var(--bg);border:none;padding:8px 16px;border-radius:4px;font-family:inherit;font-weight:700;cursor:pointer">Submit</button>';
+        html += '<span class="ask-counter" style="color:var(--text-dim);font-size:0.8em;line-height:36px">0 selected</span></div>';
+      } else if (q.type === 'rank_priorities') {
+        html += '<div class="rank-list" style="list-style:none">';
+        q.options.forEach(function(opt, i) {
+          html += '<div class="rank-item" draggable="true" data-idx="' + i + '" style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:grab;font-size:0.9em">';
+          html += '<span style="color:var(--text-dim);cursor:grab">⠿</span>';
+          html += '<span class="rank-num" style="color:var(--amber);font-weight:700;min-width:20px">' + (i+1) + '.</span>';
+          html += '<span>' + escText(opt) + '</span></div>';
+        });
+        html += '</div>';
+        html += '<button class="ask-submit" style="margin-top:10px;background:var(--green-dim);color:var(--bg);border:none;padding:8px 16px;border-radius:4px;font-family:inherit;font-weight:700;cursor:pointer">Submit ranking</button>';
+      }
+
+      html += '<button class="ask-skip" style="margin-top:8px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-family:inherit;font-size:0.8em;padding:4px 0">Skip</button>';
+      html += '</div>';
+      el.innerHTML = html;
+
+      // Wire up events
+      if (q.type === 'single_select') {
+        el.querySelectorAll('.ask-option').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            answers.push({question: q.question, type: q.type, answer: q.options[parseInt(btn.dataset.idx)]});
+            nextQuestion();
+          });
+          btn.addEventListener('mouseenter', function() { btn.style.borderColor = 'var(--green-dim)'; btn.style.color = 'var(--green)'; });
+          btn.addEventListener('mouseleave', function() { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text)'; });
+        });
+      } else if (q.type === 'multi_select') {
+        var counter = el.querySelector('.ask-counter');
+        el.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+          cb.addEventListener('change', function() {
+            var count = el.querySelectorAll('input:checked').length;
+            counter.textContent = count + ' selected';
+          });
+        });
+        el.querySelector('.ask-submit').addEventListener('click', function() {
+          var selected = [];
+          el.querySelectorAll('input:checked').forEach(function(cb) {
+            selected.push(q.options[parseInt(cb.dataset.idx)]);
+          });
+          answers.push({question: q.question, type: q.type, answer: selected});
+          nextQuestion();
+        });
+      } else if (q.type === 'rank_priorities') {
+        setupDragReorder(el.querySelector('.rank-list'));
+        el.querySelector('.ask-submit').addEventListener('click', function() {
+          var ranked = [];
+          el.querySelectorAll('.rank-item').forEach(function(item) {
+            ranked.push(q.options[parseInt(item.dataset.idx)]);
+          });
+          answers.push({question: q.question, type: q.type, ranked: ranked});
+          nextQuestion();
+        });
+      }
+
+      el.querySelector('.ask-skip').addEventListener('click', function() {
+        answers.push({question: q.question, type: q.type, answer: 'skipped'});
+        nextQuestion();
+      });
+
+      // Keyboard navigation
+      var focusIdx = -1;
+      var optionEls = el.querySelectorAll('.ask-option, label, .rank-item');
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          el.querySelector('.ask-skip').click();
+          return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (e.key === 'ArrowDown') focusIdx = Math.min(focusIdx + 1, optionEls.length - 1);
+          else focusIdx = Math.max(focusIdx - 1, 0);
+          optionEls[focusIdx].focus();
+          optionEls[focusIdx].style.outline = '2px solid var(--green-dim)';
+          optionEls.forEach(function(o, i) { if (i !== focusIdx) o.style.outline = ''; });
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (q.type === 'single_select' && focusIdx >= 0) optionEls[focusIdx].click();
+          else { var sub = el.querySelector('.ask-submit'); if (sub) sub.click(); }
+        }
+      });
+      el.setAttribute('tabindex', '0');
+      el.focus();
+    }
+
+    function nextQuestion() {
+      currentQ++;
+      if (currentQ < d.questions.length) {
+        showQuestion(currentQ);
+      } else {
+        // Send answers as user message (per spec format)
+        var parts = answers.map(function(a) {
+          if (a.type === 'rank_priorities' && a.ranked) return '[User ranked: ' + a.ranked.map(function(r,i) { return (i+1) + '. ' + r; }).join(', ') + ']';
+          if (a.type === 'multi_select' && Array.isArray(a.answer)) return '[User selected: ' + a.answer.join(', ') + ']';
+          return '[User selected: ' + a.answer + ']';
+        });
+        el.innerHTML = '<div class="widget-body" style="color:var(--text-dim)">Responses submitted</div>';
+        // Auto-send
+        inputEl.value = parts.join(' ');
+        send();
+      }
+    }
+
+    function setupDragReorder(list) {
+      var dragItem = null;
+      list.querySelectorAll('.rank-item').forEach(function(item) {
+        item.addEventListener('dragstart', function(e) { dragItem = item; item.style.opacity = '0.5'; });
+        item.addEventListener('dragend', function() { dragItem.style.opacity = '1'; dragItem = null; updateNumbers(list); });
+        item.addEventListener('dragover', function(e) { e.preventDefault(); });
+        item.addEventListener('drop', function(e) {
+          e.preventDefault();
+          if (dragItem && dragItem !== item) {
+            var items = Array.from(list.children);
+            var dragIdx = items.indexOf(dragItem);
+            var dropIdx = items.indexOf(item);
+            if (dragIdx < dropIdx) list.insertBefore(dragItem, item.nextSibling);
+            else list.insertBefore(dragItem, item);
+          }
+        });
+      });
+    }
+
+    function updateNumbers(list) {
+      list.querySelectorAll('.rank-num').forEach(function(num, i) { num.textContent = (i+1) + '.'; });
+    }
+
+    showQuestion(0);
+  }
+
+  function renderMessageCompose(el, d) {
+    var currentVar = 0;
+    function show(idx) {
+      var v = d.variants[idx];
+      var html = '<div class="widget-header">' + escText(d.summary_title) + '</div>';
+      if (d.variants.length > 1) {
+        html += '<div class="compose-tabs">';
+        d.variants.forEach(function(vr, i) {
+          html += '<button class="compose-tab' + (i === idx ? ' active' : '') + '" data-idx="' + i + '">' + escText(vr.label) + '</button>';
+        });
+        html += '</div>';
+      }
+      if (d.kind === 'email' && v.subject) {
+        html += '<div class="compose-subject">Subject: ' + escText(v.subject) + '</div>';
+      }
+      html += '<div class="compose-body">' + escText(v.body) + '</div>';
+      html += '<div class="compose-actions">';
+      if (d.kind === 'email' && v.subject) {
+        html += '<a class="compose-btn" href="mailto:?subject=' + encodeURIComponent(v.subject) + '&body=' + encodeURIComponent(v.body) + '" target="_blank">Open in email</a>';
+      }
+      html += '<button class="compose-btn-outline compose-copy">Copy</button>';
+      html += '</div>';
+      el.innerHTML = html;
+
+      // Tab switching
+      el.querySelectorAll('.compose-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() { show(parseInt(tab.dataset.idx)); });
+      });
+
+      // Copy
+      var compCopyBtn = el.querySelector('.compose-copy');
+      compCopyBtn.addEventListener('click', function() {
+        copyToClipboard(v.body, compCopyBtn);
+      });
+    }
+    show(0);
+  }
+
+  var _chartjsLoaded = false;
+  var _chartjsCallbacks = [];
+
+  function loadChartJS(cb) {
+    if (_chartjsLoaded) { cb(); return; }
+    _chartjsCallbacks.push(cb);
+    if (_chartjsCallbacks.length > 1) return;
+
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+    script.onload = function() {
+      _chartjsLoaded = true;
+      _chartjsCallbacks.forEach(function(c) { c(); });
+      _chartjsCallbacks = [];
+    };
+    script.onerror = function() {
+      _chartjsCallbacks.forEach(function(c) { c(true); });
+      _chartjsCallbacks = [];
+    };
+    setTimeout(function() { if (!_chartjsLoaded) script.onerror(); }, 10000);
+    document.head.appendChild(script);
+  }
+
+  function renderChart(el, d) {
+    var html = '';
+    if (d.title) html += '<div class="widget-header">' + escText(d.title) + '</div>';
+    html += '<div class="chart-container"><canvas></canvas></div>';
+    html += '<div class="chart-fallback" style="display:none"></div>';
+    el.innerHTML = html;
+
+    var canvas = el.querySelector('canvas');
+    var fallback = el.querySelector('.chart-fallback');
+
+    loadChartJS(function(err) {
+      if (err || !window.Chart) {
+        // Fallback: data table
+        canvas.style.display = 'none';
+        fallback.style.display = 'block';
+        var tbl = '<table><tr><th></th>';
+        d.series.forEach(function(s) { tbl += '<th>' + escText(s.name) + '</th>'; });
+        tbl += '</tr>';
+        var maxLen = Math.max.apply(null, d.series.map(function(s) { return s.data.length; }));
+        for (var i = 0; i < maxLen; i++) {
+          tbl += '<tr><td>' + (d.x_labels && d.x_labels[i] ? escText(d.x_labels[i]) : i) + '</td>';
+          d.series.forEach(function(s) { tbl += '<td>' + (s.data[i] !== undefined ? s.data[i] : '') + '</td>'; });
+          tbl += '</tr>';
+        }
+        tbl += '</table>';
+        fallback.innerHTML = tbl;
+        return;
+      }
+
+      // Resolve CSS variables — canvas doesn't support var() syntax
+      var cs = getComputedStyle(document.documentElement);
+      var textColor = cs.getPropertyValue('--text').trim();
+      var textDimColor = cs.getPropertyValue('--text-dim').trim();
+      var borderColor = cs.getPropertyValue('--border').trim();
+
+      var colors = ['#00ff41', '#00d4ff', '#ffb000', '#ff3333', '#b99aff'];
+      var datasets = d.series.map(function(s, i) {
+        var color = colors[i % colors.length];
+        var ds = { label: s.name, data: s.data, borderColor: color, backgroundColor: color + '33' };
+        if (d.style === 'scatter') { ds.type = 'scatter'; ds.showLine = false; }
+        if (d.style === 'bar') { ds.type = 'bar'; }
+        return ds;
+      });
+
+      new Chart(canvas, {
+        type: d.style === 'scatter' ? 'scatter' : d.style,
+        data: {
+          labels: d.x_labels.length ? d.x_labels : d.series[0].data.map(function(_, i) { return i; }),
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: textColor } } },
+          scales: {
+            x: { ticks: { color: textDimColor }, grid: { color: borderColor } },
+            y: {
+              title: { display: !!d.y_label, text: d.y_label, color: textDimColor },
+              ticks: { color: textDimColor }, grid: { color: borderColor }
+            }
+          }
+        }
+      });
+    });
+  }
+
+  // Helpers
+  function escText(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // Render basic markdown: bold, italic, links, images, inline code
+  function renderMarkdown(text) {
+    var h = escText(text);
+    // Images: ![alt](url)
+    h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:4px;margin:4px 0;max-height:200px;">');
+    // Links: [text](url)
+    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:var(--cyan)">$1</a>');
+    // Bold: **text**
+    h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Italic: *text*
+    h = h.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    // Inline code: `text`
+    h = h.replace(/`([^`]+)`/g, '<code style="background:var(--surface);padding:1px 4px;border-radius:2px;font-size:0.9em">$1</code>');
+    return h;
+  }
+
+  // Clipboard copy that works on HTTP (fallback for non-HTTPS)
+  function copyToClipboard(text, btn) {
+    function onSuccess() {
+      btn.textContent = 'copied!';
+      setTimeout(function() { btn.textContent = 'copy'; }, 1500);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(onSuccess);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      onSuccess();
+    }
+  }
 
   // Init
   async function init() {

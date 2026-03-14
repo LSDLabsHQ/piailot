@@ -8,7 +8,11 @@ from auth import get_current_user, get_user_dir
 
 router = APIRouter(prefix="/api/skills")
 
-AVAILABLE_TOOLS = ["web_search", "web_fetch", "calculator", "datetime"]
+AVAILABLE_TOOLS = [
+    "web_search", "web_fetch", "calculator", "image_search",
+    "weather", "places_search", "sports_data",
+    "ask_user_input", "message_compose", "chart_display",
+]
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 MAX_NAME_LEN = 64
 
@@ -35,12 +39,14 @@ def _validate_name(name: str) -> str | None:
     return None
 
 
-def _validate_tools(tools: list[str]) -> str | None:
-    """Return error message if any tool is invalid, else None."""
-    bad = [t for t in tools if t not in AVAILABLE_TOOLS]
+def _validate_tools(tools: list[str]) -> tuple[str | None, list[str]]:
+    """Return (error_message, cleaned_tools). Error is None if valid."""
+    # Map deprecated names: datetime is now always-on as user_time, strip it
+    cleaned = [t for t in tools if t != "datetime"]
+    bad = [t for t in cleaned if t not in AVAILABLE_TOOLS]
     if bad:
-        return f"invalid tools: {bad}. available: {AVAILABLE_TOOLS}"
-    return None
+        return f"invalid tools: {bad}. available: {AVAILABLE_TOOLS}", tools
+    return None, cleaned
 
 
 def _skill_dir(username: str, name: str) -> Path:
@@ -162,7 +168,7 @@ async def create_skill(body: SkillCreate, request: Request):
     if name_err:
         return JSONResponse({"error": name_err}, status_code=400)
 
-    tools_err = _validate_tools(body.tools)
+    tools_err, cleaned_tools = _validate_tools(body.tools)
     if tools_err:
         return JSONResponse({"error": tools_err}, status_code=400)
 
@@ -171,7 +177,7 @@ async def create_skill(body: SkillCreate, request: Request):
         return JSONResponse({"error": "skill already exists"}, status_code=409)
 
     skill_d.mkdir(parents=True, exist_ok=True)
-    md = _build_skill_md(body.name, body.description, body.tools, body.system_prompt)
+    md = _build_skill_md(body.name, body.description, cleaned_tools, body.system_prompt)
     _skill_path(username, body.name).write_text(md)
 
     return JSONResponse({"ok": True, "name": body.name}, status_code=201)
@@ -198,9 +204,10 @@ async def update_skill(name: str, body: SkillUpdate, request: Request):
     system_prompt = body.system_prompt if body.system_prompt is not None else existing["system_prompt"]
 
     if body.tools is not None:
-        tools_err = _validate_tools(tools)
+        tools_err, cleaned_tools = _validate_tools(tools)
         if tools_err:
             return JSONResponse({"error": tools_err}, status_code=400)
+        tools = cleaned_tools
 
     md = _build_skill_md(name, description, tools, system_prompt)
     md_path.write_text(md)
