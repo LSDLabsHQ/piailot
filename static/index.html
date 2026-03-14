@@ -803,8 +803,10 @@
     inputEl.focus();
   }
 
-  sendBtn.addEventListener('click', send);
+  // Prevent input blur when tapping send (fixes iOS double-tap)
+  sendBtn.addEventListener('touchstart', function(e) { e.preventDefault(); }, {passive: false});
   sendBtn.addEventListener('touchend', function(e) { e.preventDefault(); send(); });
+  sendBtn.addEventListener('click', send);
   inputEl.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
