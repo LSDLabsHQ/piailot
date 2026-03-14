@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 # ─────────────────────────────────────────────
 #  piailot:ai installer
@@ -10,8 +10,20 @@ REPO_URL="https://github.com/LSDLabsHQ/piailot.git"
 
 # Reattach stdin to terminal (needed for curl | bash)
 if [ ! -t 0 ]; then
-  exec < /dev/tty
-fi
+  if [ -r /dev/tty ] && exec < /dev/tty; then
+    : # stdin reattached
+  else
+    echo "[!] No interactive terminal available."
+    echo "    Download and run the script directly instead:"
+    echo ""
+    echo "    curl -sSL https://raw.githubusercontent.com/LSDLabsHQ/piailot/main/install.sh -o install.sh"
+    echo "    bash install.sh"
+    echo ""
+    exit 1
+  fi
+fi 2>/dev/null
+
+set -e
 
 # ── Branded header ──────────────────────────
 
